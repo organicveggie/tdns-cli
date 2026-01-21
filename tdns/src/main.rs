@@ -1,5 +1,9 @@
 use clap::{Parser, Subcommand};
 
+use crate::config::create_config_file;
+
+pub mod config;
+
 #[derive(Parser, Debug)]
 #[command(name = "tdns-cli")]
 #[command(author, version, about, long_about = None)]
@@ -62,6 +66,14 @@ fn main() {
     match &cli.command {
         Command::Init { force } => {
             println!("Init: force = {:?}", force);
+            match create_config_file(cli.config_file, force) {
+                Ok(()) => println!("Created config file"),
+                Err(error) => {
+                    println!("Error creating config file: {:?}", error);
+                    return;
+                }
+            }
+            println!("Created config file");
         }
         Command::List => {
             println!("list zones");

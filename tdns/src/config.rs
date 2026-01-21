@@ -1,0 +1,119 @@
+use std::fs::{File, create_dir_all};
+use std::io::Write;
+use std::path::Path;
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Config {
+    token: String,
+    host: String,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigFileError {
+    #[error("config file exists {file_name}, but --force not specified!")]
+    FileExistsError { file_name: String },
+    #[error("failed to check existence of config file {file_name}")]
+    FileStatusError {
+        file_name: String,
+        source: std::io::Error,
+    },
+    #[error("unable to extract parent directory from config file name: {file_name}")]
+    InvalidDirectoryError { file_name: String },
+    #[error("error creating config directory {directory_name}")]
+    CreateDirectoryError {
+        directory_name: String,
+        source: std::io::Error,
+    },
+    #[error("config directory exists but is not a directory: {directory_name}")]
+    InvalidConfigDirectory { directory_name: String },
+    #[error("error serializing config file into JSON")]
+    JsonSerializeError { source: serde_json::Error },
+    #[error("error writing JSON into config file: {file_name}")]
+    JsonWriteError {
+        file_name: String,
+        #[source]
+        error: std::io::Error,
+    },
+}
+
+pub fn create_config_file(file_name: String, force: &bool) -> Result<(), ConfigFileError> {
+    let file_path = Path::new(&file_name);
+    match file_path.try_exists() {
+        Ok(exists) => {
+            if exists {
+                if !force {
+                    return Err(ConfigFileError::FileExistsError { file_name });
+                }
+                println!("Overwriting existing config file: {:?}", file_path);
+            } else {
+                println!("File does not exist: {:?}", file_path);
+            }
+        }
+        Err(error) => {
+            return Err(ConfigFileError::FileStatusError {
+                file_name,
+                source: error,
+            });
+        }
+    }
+
+    // Validate parent directory
+    let dir_path = match file_path.parent() {
+        Some(dir_path) => dir_path,
+        None => return Err(ConfigFileError::InvalidDirectoryError { file_name }),
+    };
+
+    let dir_name = match dir_path.to_str() {
+        Some(s) => s,
+        None => "",
+    };
+
+    // Check if parent directory exists
+    let exists = match dir_path.try_exists() {
+        Ok(exists) => exists,
+        Err(error) => {
+            return Err(ConfigFileError::FileStatusError {
+                file_name: dir_name.to_string(),
+                source: error,
+            });
+        }
+    };
+
+    // Create directory if it doesn't exist
+    if !exists {
+        match create_dir_all(dir_path) {
+            Ok(()) => println!("Created directory: {:?}", dir_path),
+            Err(error) => {
+                return Err(ConfigFileError::CreateDirectoryError {
+                    directory_name: dir_name.to_string(),
+                    source: error,
+                });
+            }
+        }
+    }
+
+    // Double check the directory is a directory.
+    if !dir_path.is_dir() {
+        return Err(ConfigFileError::InvalidConfigDirectory {
+            directory_name: dir_name.to_string(),
+        });
+    }
+
+    let mut config_file = File::create(file_path).unwrap();
+    let config = Config {
+        token: "".to_owned(),
+        host: "".to_owned(),
+    };
+    let js = match serde_json::to_string_pretty(&config) {
+        Ok(s) => s,
+        Err(error) => return Err(ConfigFileError::JsonSerializeError { source: error }),
+    };
+    match config_file.write_all(js.as_bytes()) {
+        Err(error) => return Err(ConfigFileError::JsonWriteError { file_name, error }),
+        _ => {}
+    }
+
+    Ok(())
+}
