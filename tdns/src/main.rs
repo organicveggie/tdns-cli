@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use std::error::Error;
 
 pub mod config;
 pub mod zones;
@@ -82,7 +83,14 @@ async fn main() {
             };
             match cmd.execute().await {
                 Ok(()) => {}
-                Err(error) => panic!("failed to list zones: {}", error),
+                Err(error) => {
+                    eprintln!("Error: {}", error);
+                    let mut source: Option<&(dyn Error + 'static)> = error.source();
+                    while let Some(cause) = source {
+                        eprintln!("Caused by: {}", cause);
+                        source = cause.source();
+                    }
+                }
             }
         }
         Command::Zone { zone, zone_command } => {
