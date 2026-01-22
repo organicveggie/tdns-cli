@@ -1,5 +1,6 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 use crate::config;
 
@@ -63,6 +64,49 @@ pub struct Zone {
     pub sync_failed: Option<bool>,
 }
 
+impl fmt::Display for Zone {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "Zone: {}", self.name)?;
+        write!(f, "  Type: {}", self.zone_type)?;
+
+        if self.disabled {
+            write!(f, " (DISABLED)")?;
+        }
+        if self.internal {
+            write!(f, " (INTERNAL)")?;
+        }
+        writeln!(f, "")?;
+
+        writeln!(f, "  dnssecStatus: {}", self.dnssec_status)?;
+        writeln!(f, "  soaSerial: {}", self.soa_serial)?;
+        writeln!(f, "  lastModified: {}", self.last_modified)?;
+
+        if let Some(ref catalog) = self.catalog {
+            writeln!(f, "  catalog: {}", catalog)?;
+        }
+
+        if let Some(ref expiry) = self.expiry {
+            writeln!(f, "  expiry: {}", expiry)?;
+        }
+
+        if self.is_expired.is_some_and(|b| b) {
+            writeln!(f, "  EXPIRED")?;
+        }
+        if self.sync_failed.is_some_and(|b| b) {
+            writeln!(f, "  SYNC FAILED")?;
+        }
+
+        if self.notify_failed.is_some_and(|b| b) {
+            writeln!(f, "  NOTIFY FAILED")?;
+        }
+        if let Some(ref notify) = self.notify_failed_for {
+            writeln!(f, "  failed for: {}", notify.join(", "))?;
+        }
+
+        Ok(())
+    }
+}
+
 pub struct ListCmd {
     config: config::Config,
 }
@@ -121,7 +165,7 @@ impl ListCmd {
         };
 
         for zone in resp.zone_list.zones {
-            println!("Zone: {}, Type: {}", zone.name, zone.zone_type);
+            println!("{}", zone);
         }
 
         Ok(())
