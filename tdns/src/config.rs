@@ -1,4 +1,4 @@
-use std::fs::{File, create_dir_all};
+use std::fs::{self, File, create_dir_all};
 use std::io::Write;
 use std::path::Path;
 
@@ -8,6 +8,30 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     token: String,
     host: String,
+}
+
+impl Config {
+    pub fn new(host: &str, token: &str) -> Config {
+        let host_name = match host.strip_suffix("/") {
+            Some(h) => h,
+            None => host,
+        };
+        Config {
+            token: token.to_string(),
+            host: host_name.to_string(),
+        }
+    }
+
+    pub fn normalize(config: &Config) -> Config {
+        Config::new(config.host.as_str(), config.token.as_str())
+    }
+
+    pub fn get_host(&self) -> &str {
+        self.host.as_str()
+    }
+    pub fn get_token(&self) -> &str {
+        self.token.as_str()
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -28,6 +52,12 @@ pub enum ConfigFileError {
     },
     #[error("config directory exists but is not a directory: {directory_name}")]
     InvalidConfigDirectory { directory_name: String },
+    #[error("error deserializing config file from JSON file: {file_name}")]
+    JsonDeserializeError {
+        file_name: String,
+        #[source]
+        error: serde_json::Error,
+    },
     #[error("error serializing config file into JSON")]
     JsonSerializeError { source: serde_json::Error },
     #[error("error writing JSON into config file: {file_name}")]
@@ -36,15 +66,23 @@ pub enum ConfigFileError {
         #[source]
         error: std::io::Error,
     },
+    #[error("error reading config file: {file_name}")]
+    FileReadError {
+        file_name: String,
+        #[source]
+        error: std::io::Error,
+    },
 }
 
-pub fn create_config_file(file_name: String, force: &bool) -> Result<(), ConfigFileError> {
+pub fn create_config_file(file_name: &str, force: &bool) -> Result<(), ConfigFileError> {
     let file_path = Path::new(&file_name);
     match file_path.try_exists() {
         Ok(exists) => {
             if exists {
                 if !force {
-                    return Err(ConfigFileError::FileExistsError { file_name });
+                    return Err(ConfigFileError::FileExistsError {
+                        file_name: file_name.to_string(),
+                    });
                 }
                 println!("Overwriting existing config file: {:?}", file_path);
             } else {
@@ -53,7 +91,7 @@ pub fn create_config_file(file_name: String, force: &bool) -> Result<(), ConfigF
         }
         Err(error) => {
             return Err(ConfigFileError::FileStatusError {
-                file_name,
+                file_name: file_name.to_string(),
                 source: error,
             });
         }
@@ -62,7 +100,11 @@ pub fn create_config_file(file_name: String, force: &bool) -> Result<(), ConfigF
     // Validate parent directory
     let dir_path = match file_path.parent() {
         Some(dir_path) => dir_path,
-        None => return Err(ConfigFileError::InvalidDirectoryError { file_name }),
+        None => {
+            return Err(ConfigFileError::InvalidDirectoryError {
+                file_name: file_name.to_string(),
+            });
+        }
     };
 
     let dir_name = match dir_path.to_str() {
@@ -111,9 +153,37 @@ pub fn create_config_file(file_name: String, force: &bool) -> Result<(), ConfigF
         Err(error) => return Err(ConfigFileError::JsonSerializeError { source: error }),
     };
     match config_file.write_all(js.as_bytes()) {
-        Err(error) => return Err(ConfigFileError::JsonWriteError { file_name, error }),
+        Err(error) => {
+            return Err(ConfigFileError::JsonWriteError {
+                file_name: file_name.to_string(),
+                error,
+            });
+        }
         _ => {}
     }
 
     Ok(())
+}
+
+pub fn read_config_file(file_name: &str) -> Result<Config, ConfigFileError> {
+    let contents = match fs::read_to_string(file_name) {
+        Ok(s) => s,
+        Err(error) => {
+            return Err(ConfigFileError::FileReadError {
+                file_name: file_name.to_string(),
+                error,
+            });
+        }
+    };
+
+    let config: Config = match serde_json::from_str(&contents) {
+        Ok(c) => c,
+        Err(error) => {
+            return Err(ConfigFileError::JsonDeserializeError {
+                file_name: file_name.to_string(),
+                error,
+            });
+        }
+    };
+    Ok(Config::normalize(&config))
 }

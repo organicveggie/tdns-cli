@@ -1,8 +1,7 @@
 use clap::{Parser, Subcommand};
 
-use crate::config::create_config_file;
-
 pub mod config;
+pub mod zones;
 
 #[derive(Parser, Debug)]
 #[command(name = "tdns-cli")]
@@ -60,14 +59,15 @@ enum ZoneCommand {
     Resync,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
         Command::Init { force } => {
             println!("Init: force = {:?}", force);
-            match create_config_file(cli.config_file, force) {
-                Ok(()) => println!("Created config file"),
+            match config::create_config_file(&cli.config_file, force) {
+                Ok(()) => {}
                 Err(error) => {
                     println!("Error creating config file: {:?}", error);
                     return;
@@ -76,7 +76,14 @@ fn main() {
             println!("Created config file");
         }
         Command::List => {
-            println!("list zones");
+            let cmd = match zones::ListCmd::create(&cli.config_file) {
+                Ok(cmd) => cmd,
+                Err(error) => panic!("failed to list zones: {}", error),
+            };
+            match cmd.execute().await {
+                Ok(()) => {}
+                Err(error) => panic!("failed to list zones: {}", error),
+            }
         }
         Command::Zone { zone, zone_command } => {
             println!("zone subcommand: {:?}", zone);
