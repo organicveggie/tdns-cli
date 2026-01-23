@@ -6,6 +6,27 @@ use crate::config;
 
 const LIST_CMD: &str = "List Zones";
 
+pub enum ZoneSortMode {
+    Unsorted,
+    AlphabeticalAscending,
+    AlphabeticalDescending,
+}
+
+impl ZoneSortMode {
+    pub fn from_option(sort: &Option<bool>) -> ZoneSortMode {
+        match sort {
+            Some(b) => {
+                if *b {
+                    ZoneSortMode::AlphabeticalAscending
+                } else {
+                    ZoneSortMode::AlphabeticalDescending
+                }
+            }
+            _ => ZoneSortMode::Unsorted,
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum ZonesError {
     #[error("{command} HTTP request to {host} failed")]
@@ -109,12 +130,19 @@ impl fmt::Display for Zone {
 
 pub struct ListCmd {
     config: config::Config,
+    sort: ZoneSortMode,
 }
 
 impl ListCmd {
-    pub fn create(config_file: &str) -> Result<ListCmd, config::ConfigFileError> {
+    pub fn create(
+        config_file: &str,
+        sort: ZoneSortMode,
+    ) -> Result<ListCmd, config::ConfigFileError> {
         let cfg = config::read_config_file(config_file)?;
-        Ok(ListCmd { config: cfg })
+        Ok(ListCmd {
+            config: cfg,
+            sort: sort,
+        })
     }
 
     pub async fn execute(&self) -> Result<(), ZonesError> {
@@ -154,7 +182,7 @@ impl ListCmd {
             }
         };
 
-        let resp: ListZonesResponse = match serde_json::from_str(&body) {
+        let mut resp: ListZonesResponse = match serde_json::from_str(&body) {
             Ok(r) => r,
             Err(error) => {
                 return Err(ZonesError::JsonError {
@@ -163,6 +191,16 @@ impl ListCmd {
                 });
             }
         };
+
+        match self.sort {
+            ZoneSortMode::AlphabeticalAscending => {
+                resp.zone_list.zones.sort_by(|a, b| a.name.cmp(&b.name))
+            }
+            ZoneSortMode::AlphabeticalDescending => {
+                resp.zone_list.zones.sort_by(|a, b| b.name.cmp(&a.name))
+            }
+            _ => (),
+        }
 
         for zone in resp.zone_list.zones {
             println!("{}", zone);

@@ -35,7 +35,14 @@ enum Command {
         force: bool,
     },
     #[command(about = "List all zones")]
-    List,
+    List {
+        #[arg(
+            short = 'o',
+            long = "sort",
+            help = "Sort zones in ascending alphabetically"
+        )]
+        sort_asc: Option<bool>,
+    },
     #[command(about = "Perform actions on a specific zone")]
     Zone {
         #[arg(help = "Domain name of the zone")]
@@ -76,8 +83,9 @@ async fn main() {
             }
             println!("Created config file");
         }
-        Command::List => {
-            let cmd = match zones::ListCmd::create(&cli.config_file) {
+        Command::List { sort_asc } => {
+            let sort_mode = zones::ZoneSortMode::from_option(sort_asc);
+            let cmd = match zones::ListCmd::create(&cli.config_file, sort_mode) {
                 Ok(cmd) => cmd,
                 Err(error) => panic!("failed to list zones: {}", error),
             };
