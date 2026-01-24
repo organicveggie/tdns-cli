@@ -4,6 +4,7 @@ use std::fmt;
 
 use crate::config;
 use crate::errors::TdnsRequestError;
+use crate::zones;
 
 const CMD_NAME: &str = "Get Zone Records";
 
@@ -25,13 +26,13 @@ pub enum ZoneError {
 #[derive(Debug, Deserialize)]
 #[serde(rename = "response")]
 pub struct ListZoneRecordsResponse {
-    // pub zone: zones::Zone,
     #[serde(rename = "response")]
     pub records: RecordsList,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct RecordsList {
+    pub zone: zones::Zone,
     pub records: Vec<ZoneRecord>,
 }
 
@@ -194,6 +195,8 @@ impl GetRecordsCmd {
                 });
             }
         };
+
+        println!("{}", resp.records.zone);
 
         for record in resp.records.records {
             println!("{}", record);

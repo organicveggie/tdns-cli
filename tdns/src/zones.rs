@@ -32,7 +32,7 @@ impl ZoneSortMode {
 #[serde(rename = "response")]
 pub struct ListZonesResponse {
     #[serde(rename = "response")]
-    pub zone_list: ZoneList,
+    pub zone_list: Option<ZoneList>,
     pub server: String,
     pub status: String,
 
@@ -168,7 +168,7 @@ impl ListCmd {
             }
         };
 
-        let mut resp: ListZonesResponse = match serde_json::from_str(&body) {
+        let resp: ListZonesResponse = match serde_json::from_str(&body) {
             Ok(r) => r,
             Err(error) => {
                 return Err(TdnsRequestError::JsonError {
@@ -178,19 +178,21 @@ impl ListCmd {
             }
         };
 
-        match self.sort {
-            ZoneSortMode::AlphabeticalAscending => {
-                resp.zone_list.zones.sort_by(|a, b| a.name.cmp(&b.name));
+        if let Some(mut zone_list) = resp.zone_list {
+            match self.sort {
+                ZoneSortMode::AlphabeticalAscending => {
+                    zone_list.zones.sort_by(|a, b| a.name.cmp(&b.name));
+                }
+                ZoneSortMode::AlphabeticalDescending => {
+                    zone_list.zones.sort_by(|a, b| a.name.cmp(&b.name));
+                    zone_list.zones.reverse();
+                }
+                _ => (),
             }
-            ZoneSortMode::AlphabeticalDescending => {
-                resp.zone_list.zones.sort_by(|a, b| a.name.cmp(&b.name));
-                resp.zone_list.zones.reverse();
-            }
-            _ => (),
-        }
 
-        for zone in resp.zone_list.zones {
-            println!("{}", zone);
+            for zone in zone_list.zones {
+                println!("{}", zone);
+            }
         }
 
         Ok(())
