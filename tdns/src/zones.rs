@@ -3,8 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::config;
+use crate::errors::TdnsRequestError;
 
-const LIST_CMD: &str = "List Zones";
+const CMD_NAME: &str = "List Zones";
 
 pub enum ZoneSortMode {
     Unsorted,
@@ -25,21 +26,6 @@ impl ZoneSortMode {
             _ => ZoneSortMode::Unsorted,
         }
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum ZonesError {
-    #[error("{command} HTTP request to {host} failed")]
-    HttpRequestError {
-        command: String,
-        host: String,
-        source: reqwest::Error,
-    },
-    #[error("{command} JSON deserialization failed")]
-    JsonError {
-        command: String,
-        source: serde_json::Error,
-    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -145,12 +131,12 @@ impl ListCmd {
         })
     }
 
-    pub async fn execute(&self) -> Result<(), ZonesError> {
+    pub async fn execute(&self) -> Result<(), TdnsRequestError> {
         let client = match Client::builder().danger_accept_invalid_certs(true).build() {
             Ok(c) => c,
             Err(error) => {
-                return Err(ZonesError::HttpRequestError {
-                    command: LIST_CMD.to_string(),
+                return Err(TdnsRequestError::HttpRequestError {
+                    command: CMD_NAME.to_string(),
                     host: self.config.get_host().to_string(),
                     source: error,
                 });
@@ -163,8 +149,8 @@ impl ListCmd {
         let http_resp = match client.get(base_url).send().await {
             Ok(resp) => resp,
             Err(error) => {
-                return Err(ZonesError::HttpRequestError {
-                    command: LIST_CMD.to_string(),
+                return Err(TdnsRequestError::HttpRequestError {
+                    command: CMD_NAME.to_string(),
                     host: self.config.get_host().to_string(),
                     source: error,
                 });
@@ -174,8 +160,8 @@ impl ListCmd {
         let body = match http_resp.text().await {
             Ok(body) => body,
             Err(error) => {
-                return Err(ZonesError::HttpRequestError {
-                    command: LIST_CMD.to_string(),
+                return Err(TdnsRequestError::HttpRequestError {
+                    command: CMD_NAME.to_string(),
                     host: self.config.get_host().to_string(),
                     source: error,
                 });
@@ -185,8 +171,8 @@ impl ListCmd {
         let mut resp: ListZonesResponse = match serde_json::from_str(&body) {
             Ok(r) => r,
             Err(error) => {
-                return Err(ZonesError::JsonError {
-                    command: LIST_CMD.to_string(),
+                return Err(TdnsRequestError::JsonError {
+                    command: CMD_NAME.to_string(),
                     source: error,
                 });
             }
@@ -194,10 +180,11 @@ impl ListCmd {
 
         match self.sort {
             ZoneSortMode::AlphabeticalAscending => {
-                resp.zone_list.zones.sort_by(|a, b| a.name.cmp(&b.name))
+                resp.zone_list.zones.sort_by(|a, b| a.name.cmp(&b.name));
             }
             ZoneSortMode::AlphabeticalDescending => {
-                resp.zone_list.zones.sort_by(|a, b| b.name.cmp(&a.name))
+                resp.zone_list.zones.sort_by(|a, b| a.name.cmp(&b.name));
+                resp.zone_list.zones.reverse();
             }
             _ => (),
         }

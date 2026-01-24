@@ -2,6 +2,8 @@ use clap::{Parser, Subcommand};
 use std::error::Error;
 
 pub mod config;
+pub mod errors;
+pub mod zone;
 pub mod zones;
 
 #[derive(Parser, Debug)]
@@ -101,27 +103,42 @@ async fn main() {
                 }
             }
         }
-        Command::Zone { zone, zone_command } => {
-            println!("zone subcommand: {:?}", zone);
-            match zone_command {
-                ZoneCommand::Disable => {
-                    println!("disable {:?}", zone);
+        Command::Zone { zone, zone_command } => match zone_command {
+            ZoneCommand::Disable => {
+                println!("disable {:?}", zone);
+            }
+            ZoneCommand::Enable => {
+                println!("enable {:?}", zone);
+            }
+            ZoneCommand::List { domain } => {
+                if let Some(domain_name) = domain {
+                    println!("list records for {:?} in {:?}", domain_name, zone);
+                } else {
+                    println!("list records for {:?}", zone);
                 }
-                ZoneCommand::Enable => {
-                    println!("enable {:?}", zone);
-                }
-                ZoneCommand::List { domain } => match domain {
-                    Some(name) => {
-                        println!("list records for {:?} in {:?}", name, zone);
+                let cmd = match zone::GetRecordsCmd::create(
+                    &cli.config_file,
+                    zone.clone(),
+                    domain.clone(),
+                ) {
+                    Ok(cmd) => cmd,
+                    Err(error) => panic!("failed to list records for {}: {}", zone, error),
+                };
+                match cmd.execute().await {
+                    Ok(()) => {}
+                    Err(error) => {
+                        eprintln!("Error: {}", error);
+                        let mut source: Option<&(dyn Error + 'static)> = error.source();
+                        while let Some(cause) = source {
+                            eprintln!("Caused by: {}", cause);
+                            source = cause.source();
+                        }
                     }
-                    _ => {
-                        println!("list records for {:?}", zone);
-                    }
-                },
-                ZoneCommand::Resync => {
-                    println!("resync {:?}", zone);
                 }
             }
-        }
+            ZoneCommand::Resync => {
+                println!("resync {:?}", zone);
+            }
+        },
     }
 }
