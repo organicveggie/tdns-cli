@@ -2,6 +2,10 @@ use reqwest::Client;
 
 use crate::config;
 use crate::errors::TdnsRequestError;
+use tabled::{
+    builder::Builder,
+    settings::{Panel, Style, themes::BorderCorrection},
+};
 
 mod records;
 
@@ -97,9 +101,36 @@ impl GetRecordsCmd {
 
         println!("{}", resp.records.zone);
 
+        // for record in resp.records.records {
+        //     // println!("{}", record.name);
+
+        //     let mut b = Builder::with_capacity(2, 2);
+        //     // b.push_record(["Type", "Value"]);
+        //     // b.push_record([record.name]);
+        //     b.push_record([record.data.to_string(), record.data.value_summary()]);
+
+        //     let mut table = b.build();
+        //     // table.modify((0, 0), Span::column(2));
+        //     table.with(Panel::header(record.name));
+        //     table.with(BorderCorrection::span());
+
+        //     // table.with(Style::modern());
+        //     println!("{table}");
+        //     // println!("{}", record);
+        // }
+        let mut b = Builder::with_capacity(resp.records.records.len(), 3);
+        b.push_record(["Record", "Type", "Value"]);
         for record in resp.records.records {
-            println!("{}", record);
+            b.push_record([
+                record.name,
+                record.data.to_string(),
+                record.data.value_summary(),
+            ]);
         }
+
+        let mut table = b.build();
+        table.with(Style::modern());
+        println!("{table}");
 
         Ok(())
     }
