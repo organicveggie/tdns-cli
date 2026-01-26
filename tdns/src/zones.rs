@@ -1,6 +1,9 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use tabled::Table;
+use tabled::builder::Builder;
+use tabled::settings::Panel;
 
 use crate::config;
 use crate::errors::TdnsRequestError;
@@ -69,6 +72,38 @@ pub struct Zone {
     pub notify_failed: Option<bool>,
     pub notify_failed_for: Option<Vec<String>>,
     pub sync_failed: Option<bool>,
+}
+
+impl Zone {
+    pub fn to_table(&self) -> Table {
+        let mut b = Builder::with_capacity(5, 2);
+        if self.disabled || self.internal {
+            let status = if self.disabled {
+                if self.internal {
+                    "DISABLED (INTERNAL)"
+                } else {
+                    "DISABLED"
+                }
+            } else {
+                "(INTERNAL)"
+            };
+
+            b.push_record(["Status", status]);
+        }
+        b.push_record(["dnssecStatus", self.dnssec_status.as_str()]);
+        b.push_record(["soaSerial", format!("{}", self.soa_serial).as_str()]);
+        b.push_record(["lastModified", self.last_modified.as_str()]);
+        if let Some(ref catalog) = self.catalog {
+            b.push_record(["catalog", catalog]);
+        }
+        if let Some(ref expiry) = self.expiry {
+            b.push_record(["expiry", expiry]);
+        }
+
+        let mut table = b.build();
+        table.with(Panel::header(self.name.clone()));
+        table
+    }
 }
 
 impl fmt::Display for Zone {

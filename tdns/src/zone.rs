@@ -1,4 +1,5 @@
 use reqwest::Client;
+use tabled::settings::style::HorizontalLine;
 use tabled::{builder::Builder, settings::Style};
 
 use crate::config;
@@ -96,7 +97,12 @@ impl GetRecordsCmd {
             }
         };
 
-        println!("{}", resp.records.zone);
+        let table_style = Style::ascii_rounded()
+            .horizontals([(1, HorizontalLine::inherit(Style::ascii()).horizontal('-'))]);
+
+        let mut zone_table = resp.records.zone.to_table();
+        zone_table.with(table_style.clone());
+        println!("{}", zone_table);
 
         let mut b = Builder::with_capacity(resp.records.records.len(), 3);
         b.push_record(["Record", "Type", "Value"]);
@@ -109,7 +115,7 @@ impl GetRecordsCmd {
         }
 
         let mut table = b.build();
-        table.with(Style::modern());
+        table.with(table_style);
         println!("{table}");
 
         Ok(())
