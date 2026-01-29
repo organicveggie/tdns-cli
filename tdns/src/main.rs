@@ -1,8 +1,11 @@
 use clap::{Parser, Subcommand};
 use std::error::Error;
 
+use crate::tables::TableStyles;
+
 pub mod config;
 pub mod errors;
+pub mod tables;
 pub mod zone;
 pub mod zones;
 
@@ -44,6 +47,13 @@ enum Command {
             help = "Sort zones in ascending alphabetically"
         )]
         sort_asc: Option<bool>,
+        #[arg(
+            value_enum,
+            long = "table_style",
+            help = "Table style to use when printing zone records",
+            default_value_t = TableStyles::Ascii,
+        )]
+        table_style: TableStyles,
     },
     #[command(about = "Perform actions on a specific zone")]
     Zone {
@@ -72,6 +82,13 @@ enum ZoneCommand {
             default_value_t = zone::ZoneRecordDetailLevel::Summary,
         )]
         detail: zone::ZoneRecordDetailLevel,
+        #[arg(
+            value_enum,
+            long = "table_style",
+            help = "Table style to use when printing zone records",
+            default_value_t = TableStyles::Ascii,
+        )]
+        table_style: TableStyles,
     },
     #[command(about = "Resync a secondary or stub zone")]
     Resync,
@@ -93,9 +110,13 @@ async fn main() {
             }
             println!("Created config file");
         }
-        Command::List { sort_asc } => {
+        Command::List {
+            sort_asc,
+            table_style,
+        } => {
             let sort_mode = zones::ZoneSortMode::from_option(sort_asc);
-            let cmd = match zones::ListCmd::create(&cli.config_file, sort_mode) {
+            let cmd = match zones::ListCmd::create(&cli.config_file, sort_mode, table_style.clone())
+            {
                 Ok(cmd) => cmd,
                 Err(error) => panic!("failed to list zones: {}", error),
             };
@@ -118,7 +139,11 @@ async fn main() {
             ZoneCommand::Enable => {
                 println!("enable {:?}", zone);
             }
-            ZoneCommand::List { domain, detail } => {
+            ZoneCommand::List {
+                domain,
+                detail,
+                table_style,
+            } => {
                 if let Some(domain_name) = domain {
                     println!("list records for {:?} in {:?}", domain_name, zone);
                 } else {
@@ -129,6 +154,7 @@ async fn main() {
                     zone.clone(),
                     domain.clone(),
                     detail.clone(),
+                    table_style.clone(),
                 ) {
                     Ok(cmd) => cmd,
                     Err(error) => panic!("failed to list records for {}: {}", zone, error),

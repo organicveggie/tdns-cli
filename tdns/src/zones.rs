@@ -3,11 +3,11 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use tabled::Table;
 use tabled::builder::Builder;
-use tabled::settings::style::HorizontalLine;
-use tabled::settings::{Panel, Style};
+use tabled::settings::Panel;
 
 use crate::config;
 use crate::errors::TdnsRequestError;
+use crate::tables::TableStyles;
 
 const CMD_NAME: &str = "List Zones";
 
@@ -153,17 +153,20 @@ impl fmt::Display for Zone {
 pub struct ListCmd {
     config: config::Config,
     sort: ZoneSortMode,
+    table_style: TableStyles,
 }
 
 impl ListCmd {
     pub fn create(
         config_file: &str,
         sort: ZoneSortMode,
+        table_style: TableStyles,
     ) -> Result<ListCmd, config::ConfigFileError> {
         let cfg = config::read_config_file(config_file)?;
         Ok(ListCmd {
             config: cfg,
             sort: sort,
+            table_style: table_style,
         })
     }
 
@@ -226,13 +229,12 @@ impl ListCmd {
                 _ => (),
             }
 
-            let table_style = Style::ascii_rounded()
-                .horizontals([(1, HorizontalLine::inherit(Style::ascii()).horizontal('-'))]);
+            // let table_style = Style::ascii_rounded()
+            //     .horizontals([(1, HorizontalLine::inherit(Style::ascii()).horizontal('-'))]);
 
             for zone in zone_list.zones {
                 let mut zone_table = zone.to_table();
-                zone_table.with(table_style.clone());
-                println!("{}", zone_table);
+                self.table_style.print_table(&mut zone_table);
             }
         }
 

@@ -1,11 +1,11 @@
 use clap::ValueEnum;
 use reqwest::Client;
+use tabled::builder::Builder;
 use tabled::settings::Panel;
-use tabled::settings::style::HorizontalLine;
-use tabled::{builder::Builder, settings::Style};
 
 use crate::config;
 use crate::errors::TdnsRequestError;
+use crate::tables::TableStyles;
 
 mod records;
 
@@ -47,6 +47,7 @@ pub struct GetRecordsCmd {
     zone: String,
     domain: Option<String>,
     detail: ZoneRecordDetailLevel,
+    table_style: TableStyles,
 }
 
 impl GetRecordsCmd {
@@ -55,6 +56,7 @@ impl GetRecordsCmd {
         zone_name: String,
         domain_name: Option<String>,
         detail: ZoneRecordDetailLevel,
+        table_style: TableStyles,
     ) -> Result<GetRecordsCmd, config::ConfigFileError> {
         let cfg = config::read_config_file(config_file)?;
         Ok(GetRecordsCmd {
@@ -62,6 +64,7 @@ impl GetRecordsCmd {
             zone: zone_name,
             domain: domain_name,
             detail: detail,
+            table_style: table_style,
         })
     }
 
@@ -107,12 +110,11 @@ impl GetRecordsCmd {
             }
         };
 
-        let table_style = Style::ascii_rounded()
-            .horizontals([(1, HorizontalLine::inherit(Style::ascii()).horizontal('-'))]);
+        // let table_style = Style::ascii_rounded()
+        //     .horizontals([(1, HorizontalLine::inherit(Style::ascii()).horizontal('-'))]);
 
         let mut zone_table = resp.records.zone.to_table();
-        zone_table.with(table_style.clone());
-        println!("{}", zone_table);
+        self.table_style.print_table(&mut zone_table);
 
         if self.detail == ZoneRecordDetailLevel::Summary {
             let mut b = Builder::with_capacity(resp.records.records.len(), 3);
@@ -125,14 +127,14 @@ impl GetRecordsCmd {
                 ]);
             }
             let mut table = b.build();
-            table.with(table_style.clone());
-            println!("{table}");
+            // table.with(table_style.clone());
+            self.table_style.print_table(&mut table);
         } else {
             for record in resp.records.records {
                 let mut table = record.to_detailed_table();
                 table.with(Panel::header(record.name.clone()));
-                table.with(table_style.clone());
-                println!("{table}");
+                // table.with(table_style.clone());
+                self.table_style.print_table(&mut table);
             }
         }
 
@@ -146,6 +148,4 @@ impl GetRecordsCmd {
             source: error,
         }
     }
-
-    // fn make_summary_table
 }
