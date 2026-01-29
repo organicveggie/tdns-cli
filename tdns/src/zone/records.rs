@@ -1,7 +1,11 @@
 use serde::Deserialize;
 use std::fmt;
+use tabled::{Table, builder::Builder};
 
 use crate::zones;
+
+const UNUSED_INTERVAL: &str = "0s";
+const UNUSED_TIMESTAMP: &str = "0001-01-01T00:00:00";
 
 #[derive(Debug, Deserialize)]
 #[serde(rename = "response")]
@@ -139,5 +143,39 @@ impl fmt::Display for ZoneRecord {
             self.data.to_string(),
             self.data.value_summary()
         )
+    }
+}
+
+impl ZoneRecord {
+    pub fn to_detailed_table(&self) -> Table {
+        let mut b = Builder::with_capacity(4, 2);
+        b.push_record(["TTL", format!("{}", self.ttl).as_str()]);
+        if let Some(ttl) = &self.ttl_string {
+            b.push_record(["TTL", ttl]);
+        }
+        b.push_record(["Disabled", format!("{}", self.disabled).as_str()]);
+        b.push_record(["DNSSec", &self.dnssec_status]);
+
+        if let Some(last_used_on) = &self.last_used_on
+            && last_used_on != UNUSED_TIMESTAMP
+        {
+            b.push_record(["Last Used On", last_used_on]);
+        }
+        if let Some(last_modified) = &self.last_modified {
+            b.push_record(["Last Modified", last_modified]);
+        }
+
+        if let Some(expiry_ttl) = self.expiry_ttl
+            && expiry_ttl > 0
+        {
+            b.push_record(["Expiry TTL", format!("{}", expiry_ttl).as_str()]);
+        }
+        if let Some(expiry_ttl) = &self.expiry_ttl_string
+            && expiry_ttl != UNUSED_INTERVAL
+        {
+            b.push_record(["Expiry TTL", expiry_ttl]);
+        }
+
+        b.build()
     }
 }

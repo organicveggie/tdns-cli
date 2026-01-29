@@ -1,4 +1,6 @@
+use clap::ValueEnum;
 use reqwest::Client;
+use tabled::settings::Panel;
 use tabled::settings::style::HorizontalLine;
 use tabled::{builder::Builder, settings::Style};
 
@@ -23,6 +25,11 @@ pub enum ZoneError {
         source: serde_json::Error,
     },
 }
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, ValueEnum)]
+pub enum ZoneRecordDetailLevel {
+    Detailed,
+    Summary,
+}
 
 fn get_target_domain(zone: &str, domain: &Option<String>) -> String {
     if let Some(domain_name) = domain {
@@ -39,6 +46,7 @@ pub struct GetRecordsCmd {
     config: config::Config,
     zone: String,
     domain: Option<String>,
+    detail: ZoneRecordDetailLevel,
 }
 
 impl GetRecordsCmd {
@@ -46,12 +54,14 @@ impl GetRecordsCmd {
         config_file: &str,
         zone_name: String,
         domain_name: Option<String>,
+        detail: ZoneRecordDetailLevel,
     ) -> Result<GetRecordsCmd, config::ConfigFileError> {
         let cfg = config::read_config_file(config_file)?;
         Ok(GetRecordsCmd {
             config: cfg,
             zone: zone_name,
             domain: domain_name,
+            detail: detail,
         })
     }
 
@@ -104,19 +114,27 @@ impl GetRecordsCmd {
         zone_table.with(table_style.clone());
         println!("{}", zone_table);
 
-        let mut b = Builder::with_capacity(resp.records.records.len(), 3);
-        b.push_record(["Record", "Type", "Value"]);
-        for record in resp.records.records {
-            b.push_record([
-                record.name,
-                record.data.to_string(),
-                record.data.value_summary(),
-            ]);
+        if self.detail == ZoneRecordDetailLevel::Summary {
+            let mut b = Builder::with_capacity(resp.records.records.len(), 3);
+            b.push_record(["Record", "Type", "Value"]);
+            for record in resp.records.records {
+                b.push_record([
+                    record.name,
+                    record.data.to_string(),
+                    record.data.value_summary(),
+                ]);
+            }
+            let mut table = b.build();
+            table.with(table_style.clone());
+            println!("{table}");
+        } else {
+            for record in resp.records.records {
+                let mut table = record.to_detailed_table();
+                table.with(Panel::header(record.name.clone()));
+                table.with(table_style.clone());
+                println!("{table}");
+            }
         }
-
-        let mut table = b.build();
-        table.with(table_style);
-        println!("{table}");
 
         Ok(())
     }
@@ -128,4 +146,6 @@ impl GetRecordsCmd {
             source: error,
         }
     }
+
+    // fn make_summary_table
 }

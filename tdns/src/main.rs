@@ -64,6 +64,14 @@ enum ZoneCommand {
     List {
         #[arg(help = "Optional domain name to list. Skip to list all records.")]
         domain: Option<String>,
+        #[arg(
+            value_enum,
+            short = 'd',
+            long = "detail",
+            help = "Level of detail to include when printing zone records",
+            default_value_t = zone::ZoneRecordDetailLevel::Summary,
+        )]
+        detail: zone::ZoneRecordDetailLevel,
     },
     #[command(about = "Resync a secondary or stub zone")]
     Resync,
@@ -110,7 +118,7 @@ async fn main() {
             ZoneCommand::Enable => {
                 println!("enable {:?}", zone);
             }
-            ZoneCommand::List { domain } => {
+            ZoneCommand::List { domain, detail } => {
                 if let Some(domain_name) = domain {
                     println!("list records for {:?} in {:?}", domain_name, zone);
                 } else {
@@ -120,6 +128,7 @@ async fn main() {
                     &cli.config_file,
                     zone.clone(),
                     domain.clone(),
+                    detail.clone(),
                 ) {
                     Ok(cmd) => cmd,
                     Err(error) => panic!("failed to list records for {}: {}", zone, error),
