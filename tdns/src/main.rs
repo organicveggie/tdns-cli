@@ -90,8 +90,6 @@ enum ZoneCommand {
         )]
         table_style: TableStyles,
     },
-    #[command(about = "Resync a secondary or stub zone")]
-    Resync,
 }
 
 #[tokio::main]
@@ -170,9 +168,6 @@ async fn main() {
                         }
                     }
                 }
-            }
-            ZoneCommand::Resync => {
-                println!("resync {:?}", zone);
             }
         },
     }
