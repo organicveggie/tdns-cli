@@ -4,13 +4,22 @@ use std::error::Error;
 use crate::errors::{self, TdnsError};
 use crate::tables::TableStyles;
 
-pub mod helpers;
-
+pub mod add;
+pub mod enums;
 mod get_records;
+pub mod helpers;
 mod records;
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    #[command(about = "Add a record to a zone")]
+    Add {
+        #[arg(help = "Domain name of the record to add")]
+        domain: String,
+        #[arg(help = "Type of the record to add")]
+        record_type: enums::ZoneRecordType,
+    },
+
     #[command(about = "Disables an authoritative zone")]
     Disable,
 
@@ -44,6 +53,35 @@ pub enum Command {
 impl Command {
     pub async fn run(&self, config_file_name: &str, zone: String) -> Result<(), errors::TdnsError> {
         match self {
+            Command::Add {
+                domain,
+                record_type,
+            } => {
+                let cmd = match zone::add::AddRecordCmd::create(
+                    &cli.config_file,
+                    zone.clone(),
+                    domain.clone(),
+                    record_type.clone(),
+                ) {
+                    Ok(cmd) => cmd,
+                    Err(error) => {
+                        return Err(TdnsError::ConfigFileError {
+                            command: add::CMD_NAME.to_string(),
+                            source: error,
+                        });
+                    }
+                };
+                match cmd.execute().await {
+                    Ok(()) => {}
+                    Err(error) => {
+                        return Err(TdnsError::ConfigFileError {
+                            command: add::CMD_NAME.to_string(),
+                            source: error,
+                        });
+                    }
+                }
+            }
+
             Command::Disable => {
                 println!("disable {:?}", zone);
             }

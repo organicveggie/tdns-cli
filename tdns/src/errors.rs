@@ -58,3 +58,13 @@ pub trait TdnsErrorGenerator {
         }
     }
 }
+
+impl TdnsRequestError {
+    pub fn from_reqwest_error(error: reqwest::Error, command: &str, host: &str) -> Self {
+        TdnsRequestError::HttpRequestError {
+            command: command.to_string(),
+            host: host.to_string(),
+            source: error,
+        }
+    }
+}
