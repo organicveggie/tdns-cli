@@ -2,10 +2,10 @@ use reqwest::Client;
 use serde::Deserialize;
 
 use crate::config;
-use crate::errors::TdnsRequestError;
+use crate::errors::{TdnsError, TdnsErrorGenerator};
 use crate::zone::enums::ZoneRecordType;
 
-const CMD_NAME: &str = "Add Zone Record";
+pub const CMD_NAME: &str = "Add Zone Record";
 
 #[derive(Debug, Deserialize)]
 #[serde(rename = "response")]
@@ -36,7 +36,7 @@ impl AddRecordCmd {
         })
     }
 
-    pub async fn execute(&self) -> Result<(), TdnsRequestError> {
+    pub async fn execute(&self) -> Result<(), TdnsError> {
         let client = match Client::builder().danger_accept_invalid_certs(true).build() {
             Ok(c) => c,
             Err(error) => {
@@ -45,7 +45,7 @@ impl AddRecordCmd {
         };
 
         let host = self.config.get_host();
-        let mut url = format!(
+        let url = format!(
             "{host}/api/zones/records/add?token={}&domain={}&zone={}&recordType={}",
             self.config.get_token(),
             self.domain,
@@ -77,15 +77,14 @@ impl AddRecordCmd {
         println!("Response status: {}", resp.status);
         Ok(())
     }
+}
 
-    fn make_http_error(&self, error: reqwest::Error) -> TdnsRequestError {
-        TdnsRequestError::from_reqwest_error(error, &CMD_NAME, &self.config.get_host())
+impl TdnsErrorGenerator for AddRecordCmd {
+    fn get_command_name(&self) -> &str {
+        CMD_NAME
     }
 
-    fn make_json_error(&self, error: serde_json::Error) -> TdnsRequestError {
-        TdnsRequestError::JsonError {
-            command: CMD_NAME.to_string(),
-            source: error,
-        }
+    fn get_host(&self) -> &str {
+        self.config.get_host()
     }
 }

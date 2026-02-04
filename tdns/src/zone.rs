@@ -1,13 +1,13 @@
 use clap::Subcommand;
-use std::error::Error;
 
 use crate::errors::{self, TdnsError};
 use crate::tables::TableStyles;
 
-pub mod add;
 pub mod enums;
-mod get_records;
 pub mod helpers;
+
+mod add;
+mod get_records;
 mod records;
 
 #[derive(Subcommand, Debug)]
@@ -57,8 +57,8 @@ impl Command {
                 domain,
                 record_type,
             } => {
-                let cmd = match zone::add::AddRecordCmd::create(
-                    &cli.config_file,
+                let cmd = match add::AddRecordCmd::create(
+                    config_file_name,
                     zone.clone(),
                     domain.clone(),
                     record_type.clone(),
@@ -71,15 +71,7 @@ impl Command {
                         });
                     }
                 };
-                match cmd.execute().await {
-                    Ok(()) => {}
-                    Err(error) => {
-                        return Err(TdnsError::ConfigFileError {
-                            command: add::CMD_NAME.to_string(),
-                            source: error,
-                        });
-                    }
-                }
+                return cmd.execute().await;
             }
 
             Command::Disable => {
@@ -113,17 +105,7 @@ impl Command {
                         });
                     }
                 };
-                match cmd.execute().await {
-                    Ok(()) => {}
-                    Err(error) => {
-                        eprintln!("Error: {}", error);
-                        let mut source: Option<&(dyn Error + 'static)> = error.source();
-                        while let Some(cause) = source {
-                            eprintln!("Caused by: {}", cause);
-                            source = cause.source();
-                        }
-                    }
-                }
+                return cmd.execute().await;
             }
         }
         return Ok(());
