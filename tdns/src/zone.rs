@@ -16,8 +16,31 @@ pub enum Command {
     Add {
         #[arg(help = "Domain name of the record to add")]
         domain: String,
-        #[arg(help = "Type of the record to add")]
-        record_type: enums::ZoneRecordType,
+
+        #[arg(long = "ttl", help = "TTL in seconds for the record to add")]
+        ttl: Option<u32>,
+
+        #[arg(
+            short,
+            long,
+            default_value_t = false,
+            help = "Overwrite existing record if it exists"
+        )]
+        overwrite: bool,
+
+        #[arg(long = "comments", help = "Comments for the record to add")]
+        comments: Option<String>,
+
+        #[arg(
+            long = "expiry-ttl",
+            help = "Expiry TTL in seconds for the record to add",
+            long_help = "Set to automatically delete the record when the value in seconds elapses since 
+the record’s last modified time."
+        )]
+        expiry_ttl: Option<u32>,
+
+        #[command(subcommand)]
+        add_command: add::RecordTypeCommand,
     },
 
     #[command(about = "Disables an authoritative zone")]
@@ -55,23 +78,23 @@ impl Command {
         match self {
             Command::Add {
                 domain,
-                record_type,
+                ttl,
+                overwrite,
+                comments,
+                expiry_ttl,
+                add_command,
             } => {
-                let cmd = match add::AddRecordCmd::create(
-                    config_file_name,
-                    zone.clone(),
-                    domain.clone(),
-                    record_type.clone(),
-                ) {
-                    Ok(cmd) => cmd,
-                    Err(error) => {
-                        return Err(TdnsError::ConfigFileError {
-                            command: add::CMD_NAME.to_string(),
-                            source: error,
-                        });
-                    }
-                };
-                return cmd.execute().await;
+                return add_command
+                    .run(
+                        config_file_name,
+                        zone,
+                        domain.clone(),
+                        *overwrite,
+                        comments.clone(),
+                        ttl.clone(),
+                        expiry_ttl.clone(),
+                    )
+                    .await;
             }
 
             Command::Disable => {

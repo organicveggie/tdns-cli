@@ -18,6 +18,13 @@ pub enum TdnsError {
         command: String,
         source: crate::config::ConfigFileError,
     },
+
+    #[error("{command} invalid domain name: {domain} - {message}")]
+    InvalidDomainName {
+        command: String,
+        domain: String,
+        message: String,
+    },
 }
 
 pub trait TdnsErrorGenerator {
@@ -37,24 +44,36 @@ pub trait TdnsErrorGenerator {
     }
 
     fn make_http_error(&self, error: reqwest::Error) -> TdnsError {
-        TdnsError::HttpRequestError {
-            command: self.get_command_name().to_string(),
-            host: self.get_host().to_string(),
-            source: error,
-        }
+        make_http_error(self.get_command_name(), self.get_host(), error)
     }
 
     fn make_json_error(&self, error: serde_json::Error) -> TdnsError {
-        TdnsError::JsonError {
-            command: self.get_command_name().to_string(),
-            source: error,
-        }
+        make_json_error(self.get_command_name(), error)
     }
 
     fn make_config_error(&self, error: crate::config::ConfigFileError) -> TdnsError {
-        TdnsError::ConfigFileError {
-            command: self.get_command_name().to_string(),
-            source: error,
-        }
+        make_config_error(self.get_command_name(), error)
+    }
+}
+
+pub fn make_http_error(command: &str, host: &str, error: reqwest::Error) -> TdnsError {
+    TdnsError::HttpRequestError {
+        command: command.to_string(),
+        host: host.to_string(),
+        source: error,
+    }
+}
+
+pub fn make_json_error(command: &str, error: serde_json::Error) -> TdnsError {
+    TdnsError::JsonError {
+        command: command.to_string(),
+        source: error,
+    }
+}
+
+pub fn make_config_error(command: &str, error: crate::config::ConfigFileError) -> TdnsError {
+    TdnsError::ConfigFileError {
+        command: command.to_string(),
+        source: error,
     }
 }
