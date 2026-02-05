@@ -1,16 +1,48 @@
 use clap::Subcommand;
-use std::error::Error;
 
 use crate::errors::{self, TdnsError};
 use crate::tables::TableStyles;
 
+pub mod enums;
 pub mod helpers;
 
+mod add;
 mod get_records;
 mod records;
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    #[command(about = "Add a record to a zone")]
+    Add {
+        #[arg(help = "Domain name of the record to add")]
+        domain: String,
+
+        #[arg(long = "ttl", help = "TTL in seconds for the record to add")]
+        ttl: Option<u32>,
+
+        #[arg(
+            short,
+            long,
+            default_value_t = false,
+            help = "Overwrite existing record if it exists"
+        )]
+        overwrite: bool,
+
+        #[arg(long = "comments", help = "Comments for the record to add")]
+        comments: Option<String>,
+
+        #[arg(
+            long = "expiry-ttl",
+            help = "Expiry TTL in seconds for the record to add",
+            long_help = "Set to automatically delete the record when the value in seconds elapses since 
+the record’s last modified time."
+        )]
+        expiry_ttl: Option<u32>,
+
+        #[command(subcommand)]
+        add_command: add::RecordTypeCommand,
+    },
+
     #[command(about = "Disables an authoritative zone")]
     Disable,
 
@@ -44,6 +76,27 @@ pub enum Command {
 impl Command {
     pub async fn run(&self, config_file_name: &str, zone: String) -> Result<(), errors::TdnsError> {
         match self {
+            Command::Add {
+                domain,
+                ttl,
+                overwrite,
+                comments,
+                expiry_ttl,
+                add_command,
+            } => {
+                return add_command
+                    .run(
+                        config_file_name,
+                        zone,
+                        domain.clone(),
+                        *overwrite,
+                        comments.clone(),
+                        ttl.clone(),
+                        expiry_ttl.clone(),
+                    )
+                    .await;
+            }
+
             Command::Disable => {
                 println!("disable {:?}", zone);
             }
@@ -75,17 +128,7 @@ impl Command {
                         });
                     }
                 };
-                match cmd.execute().await {
-                    Ok(()) => {}
-                    Err(error) => {
-                        eprintln!("Error: {}", error);
-                        let mut source: Option<&(dyn Error + 'static)> = error.source();
-                        while let Some(cause) = source {
-                            eprintln!("Caused by: {}", cause);
-                            source = cause.source();
-                        }
-                    }
-                }
+                return cmd.execute().await;
             }
         }
         return Ok(());

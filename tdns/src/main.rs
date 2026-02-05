@@ -93,12 +93,7 @@ async fn main() {
             match cmd.execute().await {
                 Ok(()) => {}
                 Err(error) => {
-                    eprintln!("Error: {}", error);
-                    let mut source: Option<&(dyn Error + 'static)> = error.source();
-                    while let Some(cause) = source {
-                        eprintln!("Caused by: {}", cause);
-                        source = cause.source();
-                    }
+                    print_tdns_error(&error);
                 }
             }
         }
@@ -106,14 +101,18 @@ async fn main() {
             match zone::Command::run(&zone_command, &cli.config_file, zone.clone()).await {
                 Ok(()) => {}
                 Err(error) => {
-                    eprintln!("Error: {}", error);
-                    let mut source: Option<&(dyn Error + 'static)> = error.source();
-                    while let Some(cause) = source {
-                        eprintln!("Caused by: {}", cause);
-                        source = cause.source();
-                    }
+                    print_tdns_error(&error);
                 }
             }
         }
+    }
+}
+
+fn print_tdns_error(error: &errors::TdnsError) {
+    eprintln!("Error: {}", error);
+    let mut source: Option<&(dyn Error + 'static)> = error.source();
+    while let Some(cause) = source {
+        eprintln!("Caused by: {}", cause);
+        source = cause.source();
     }
 }
