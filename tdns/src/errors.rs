@@ -77,3 +77,87 @@ pub fn make_config_error(command: &str, error: crate::config::ConfigFileError) -
         source: error,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn make_config_error_populates_fields() {
+        let command_name = "TestCommand";
+        let config_error = crate::config::ConfigFileError::FileReadError {
+            file_name: "config.toml".to_string(),
+            error: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+        };
+        let tdns_error = make_config_error(command_name, config_error);
+
+        match tdns_error {
+            TdnsError::ConfigFileError { command, source: _ } => {
+                assert_eq!(command, command_name);
+            }
+            _ => panic!("Expected TdnsError::ConfigFileError variant"),
+        }
+    }
+
+    #[test]
+    fn make_json_error_populates_fields() {
+        let command_name = "TestCommand";
+        let json_error = serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
+        let tdns_error = make_json_error(command_name, json_error);
+
+        match tdns_error {
+            TdnsError::JsonError { command, source: _ } => {
+                assert_eq!(command, command_name);
+            }
+            _ => panic!("Expected TdnsError::JsonError variant"),
+        }
+    }
+
+    fn trait_test_error_generator<T: TdnsErrorGenerator>(generator: T) {
+        let config_error = crate::config::ConfigFileError::FileReadError {
+            file_name: "config.toml".to_string(),
+            error: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+        };
+
+        let tdns_error = generator.make_config_err(config_error);
+        assert!(tdns_error.is_err());
+        match tdns_error.unwrap_err() {
+            TdnsError::ConfigFileError { command, source: _ } => {
+                assert_eq!(command, generator.get_command_name());
+            }
+            _ => panic!("Expected TdnsError::ConfigFileError variant"),
+        }
+
+        let json_error = serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
+        let tdns_error = generator.make_json_err(json_error);
+        assert!(tdns_error.is_err());
+        match tdns_error.unwrap_err() {
+            TdnsError::JsonError { command, source: _ } => {
+                assert_eq!(command, generator.get_command_name());
+            }
+            _ => panic!("Expected TdnsError::JsonError variant"),
+        }
+    }
+
+    mod trait_tests {
+        use super::*;
+
+        struct TestGenerator;
+
+        impl TdnsErrorGenerator for TestGenerator {
+            fn get_command_name(&self) -> &str {
+                "TestCommand"
+            }
+
+            fn get_host(&self) -> &str {
+                "testhost"
+            }
+        }
+
+        #[test]
+        fn make_errors_return_errors() {
+            let generator = TestGenerator;
+            trait_test_error_generator(generator);
+        }
+    }
+}
