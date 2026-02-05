@@ -38,34 +38,42 @@ impl Config {
 pub enum ConfigFileError {
     #[error("config file exists {file_name}, but --force not specified!")]
     FileExistsError { file_name: String },
+
     #[error("failed to check existence of config file {file_name}")]
     FileStatusError {
         file_name: String,
         source: std::io::Error,
     },
+
     #[error("unable to extract parent directory from config file name: {file_name}")]
     InvalidDirectoryError { file_name: String },
+
     #[error("error creating config directory {directory_name}")]
     CreateDirectoryError {
         directory_name: String,
         source: std::io::Error,
     },
+
     #[error("config directory exists but is not a directory: {directory_name}")]
     InvalidConfigDirectory { directory_name: String },
+
     #[error("error deserializing config file from JSON file: {file_name}")]
     JsonDeserializeError {
         file_name: String,
         #[source]
         error: serde_json::Error,
     },
+
     #[error("error serializing config file into JSON")]
     JsonSerializeError { source: serde_json::Error },
+
     #[error("error writing JSON into config file: {file_name}")]
     JsonWriteError {
         file_name: String,
         #[source]
         error: std::io::Error,
     },
+
     #[error("error reading config file: {file_name}")]
     FileReadError {
         file_name: String,

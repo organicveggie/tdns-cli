@@ -6,7 +6,7 @@ use tabled::builder::Builder;
 use tabled::settings::Panel;
 
 use crate::config;
-use crate::errors::TdnsRequestError;
+use crate::errors::{TdnsError, TdnsErrorGenerator};
 use crate::tables::TableStyles;
 
 const CMD_NAME: &str = "List Zones";
@@ -170,15 +170,11 @@ impl ListCmd {
         })
     }
 
-    pub async fn execute(&self) -> Result<(), TdnsRequestError> {
+    pub async fn execute(&self) -> Result<(), TdnsError> {
         let client = match Client::builder().danger_accept_invalid_certs(true).build() {
             Ok(c) => c,
             Err(error) => {
-                return Err(TdnsRequestError::HttpRequestError {
-                    command: CMD_NAME.to_string(),
-                    host: self.config.get_host().to_string(),
-                    source: error,
-                });
+                return self.make_http_err(error);
             }
         };
 
@@ -188,32 +184,21 @@ impl ListCmd {
         let http_resp = match client.get(base_url).send().await {
             Ok(resp) => resp,
             Err(error) => {
-                return Err(TdnsRequestError::HttpRequestError {
-                    command: CMD_NAME.to_string(),
-                    host: self.config.get_host().to_string(),
-                    source: error,
-                });
+                return self.make_http_err(error);
             }
         };
 
         let body = match http_resp.text().await {
             Ok(body) => body,
             Err(error) => {
-                return Err(TdnsRequestError::HttpRequestError {
-                    command: CMD_NAME.to_string(),
-                    host: self.config.get_host().to_string(),
-                    source: error,
-                });
+                return self.make_http_err(error);
             }
         };
 
         let resp: ListZonesResponse = match serde_json::from_str(&body) {
             Ok(r) => r,
             Err(error) => {
-                return Err(TdnsRequestError::JsonError {
-                    command: CMD_NAME.to_string(),
-                    source: error,
-                });
+                return self.make_json_err(error);
             }
         };
 
@@ -239,5 +224,14 @@ impl ListCmd {
         }
 
         Ok(())
+    }
+}
+
+impl TdnsErrorGenerator for ListCmd {
+    fn get_command_name(&self) -> &str {
+        CMD_NAME
+    }
+    fn get_host(&self) -> &str {
+        self.config.get_host()
     }
 }

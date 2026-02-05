@@ -60,35 +60,7 @@ enum Command {
         #[arg(help = "Domain name of the zone")]
         zone: String,
         #[command(subcommand)]
-        zone_command: ZoneCommand,
-    },
-}
-
-#[derive(Subcommand, Debug)]
-enum ZoneCommand {
-    #[command(about = "Disables an authoritative zone")]
-    Disable,
-    #[command(about = "Enables an authoritative zone")]
-    Enable,
-    #[command(about = "List records in a zone")]
-    List {
-        #[arg(help = "Optional domain name to list. Skip to list all records.")]
-        domain: Option<String>,
-        #[arg(
-            value_enum,
-            short = 'd',
-            long = "detail",
-            help = "Level of detail to include when printing zone records",
-            default_value_t = zone::ZoneRecordDetailLevel::Summary,
-        )]
-        detail: zone::ZoneRecordDetailLevel,
-        #[arg(
-            value_enum,
-            long = "table_style",
-            help = "Table style to use when printing zone records",
-            default_value_t = TableStyles::Ascii,
-        )]
-        table_style: TableStyles,
+        zone_command: zone::Command,
     },
 }
 
@@ -130,45 +102,18 @@ async fn main() {
                 }
             }
         }
-        Command::Zone { zone, zone_command } => match zone_command {
-            ZoneCommand::Disable => {
-                println!("disable {:?}", zone);
-            }
-            ZoneCommand::Enable => {
-                println!("enable {:?}", zone);
-            }
-            ZoneCommand::List {
-                domain,
-                detail,
-                table_style,
-            } => {
-                if let Some(domain_name) = domain {
-                    println!("list records for {:?} in {:?}", domain_name, zone);
-                } else {
-                    println!("list records for {:?}", zone);
-                }
-                let cmd = match zone::GetRecordsCmd::create(
-                    &cli.config_file,
-                    zone.clone(),
-                    domain.clone(),
-                    detail.clone(),
-                    table_style.clone(),
-                ) {
-                    Ok(cmd) => cmd,
-                    Err(error) => panic!("failed to list records for {}: {}", zone, error),
-                };
-                match cmd.execute().await {
-                    Ok(()) => {}
-                    Err(error) => {
-                        eprintln!("Error: {}", error);
-                        let mut source: Option<&(dyn Error + 'static)> = error.source();
-                        while let Some(cause) = source {
-                            eprintln!("Caused by: {}", cause);
-                            source = cause.source();
-                        }
+        Command::Zone { zone, zone_command } => {
+            match zone::Command::run(&zone_command, &cli.config_file, zone.clone()).await {
+                Ok(()) => {}
+                Err(error) => {
+                    eprintln!("Error: {}", error);
+                    let mut source: Option<&(dyn Error + 'static)> = error.source();
+                    while let Some(cause) = source {
+                        eprintln!("Caused by: {}", cause);
+                        source = cause.source();
                     }
                 }
             }
-        },
+        }
     }
 }
