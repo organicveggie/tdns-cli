@@ -3,6 +3,7 @@ use std::error::Error;
 
 use crate::tables::TableStyles;
 
+pub mod client;
 pub mod config;
 pub mod errors;
 pub mod tables;
@@ -84,9 +85,17 @@ async fn main() {
             sort_asc,
             table_style,
         } => {
+            let client = match client::TdnsHttpClient::new() {
+                Ok(client) => client,
+                Err(error) => panic!("Error creating HTTP client: {}", error),
+            };
             let sort_mode = zones::ZoneSortMode::from_option(sort_asc);
-            let cmd = match zones::ListCmd::create(&cli.config_file, sort_mode, table_style.clone())
-            {
+            let cmd = match zones::ListCmd::create(
+                client,
+                &cli.config_file,
+                sort_mode,
+                table_style.clone(),
+            ) {
                 Ok(cmd) => cmd,
                 Err(error) => panic!("failed to list zones: {}", error),
             };

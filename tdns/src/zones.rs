@@ -1,10 +1,10 @@
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use tabled::Table;
 use tabled::builder::Builder;
 use tabled::settings::Panel;
 
+use crate::client::TdnsClient;
 use crate::config;
 use crate::errors::{TdnsError, TdnsErrorGenerator};
 use crate::tables::TableStyles;
@@ -150,20 +150,23 @@ impl fmt::Display for Zone {
     }
 }
 
-pub struct ListCmd {
+pub struct ListCmd<C: TdnsClient> {
+    client: C,
     config: config::Config,
     sort: ZoneSortMode,
     table_style: TableStyles,
 }
 
-impl ListCmd {
+impl<C: TdnsClient> ListCmd<C> {
     pub fn create(
+        client: C,
         config_file: &str,
         sort: ZoneSortMode,
         table_style: TableStyles,
-    ) -> Result<ListCmd, config::ConfigFileError> {
+    ) -> Result<ListCmd<C>, config::ConfigFileError> {
         let cfg = config::read_config_file(config_file)?;
         Ok(ListCmd {
+            client: client,
             config: cfg,
             sort: sort,
             table_style: table_style,
@@ -171,24 +174,10 @@ impl ListCmd {
     }
 
     pub async fn execute(&self) -> Result<(), TdnsError> {
-        let client = match Client::builder().danger_accept_invalid_certs(true).build() {
-            Ok(c) => c,
-            Err(error) => {
-                return self.make_http_err(error);
-            }
-        };
-
         let host = self.config.get_host();
-        let base_url = format!("{host}/api/zones/list?token={}", self.config.get_token());
+        let url = format!("{host}/api/zones/list?token={}", self.config.get_token());
 
-        let http_resp = match client.get(base_url).send().await {
-            Ok(resp) => resp,
-            Err(error) => {
-                return self.make_http_err(error);
-            }
-        };
-
-        let body = match http_resp.text().await {
+        let body = match self.client.get_body(&url).await {
             Ok(body) => body,
             Err(error) => {
                 return self.make_http_err(error);
@@ -227,7 +216,7 @@ impl ListCmd {
     }
 }
 
-impl TdnsErrorGenerator for ListCmd {
+impl<C: TdnsClient> TdnsErrorGenerator for ListCmd<C> {
     fn get_command_name(&self) -> &str {
         CMD_NAME
     }
