@@ -173,21 +173,21 @@ impl<C: TdnsClient> ListCmd<C> {
         })
     }
 
-    pub async fn execute(&self) -> Result<(), TdnsError> {
+    async fn get_zones(&self) -> Result<Option<ZoneList>, TdnsError> {
         let host = self.config.get_host();
         let url = format!("{host}/api/zones/list?token={}", self.config.get_token());
 
         let body = match self.client.get_body(&url).await {
             Ok(body) => body,
             Err(error) => {
-                return self.make_http_err(error);
+                return Err(self.make_http_error(error));
             }
         };
 
         let resp: ListZonesResponse = match serde_json::from_str(&body) {
             Ok(r) => r,
             Err(error) => {
-                return self.make_json_err(error);
+                return Err(self.make_json_error(error));
             }
         };
 
@@ -202,14 +202,28 @@ impl<C: TdnsClient> ListCmd<C> {
                 }
                 _ => (),
             }
+            Ok(Some(zone_list))
+        } else {
+            Ok(None)
+        }
+    }
 
-            // let table_style = Style::ascii_rounded()
-            //     .horizontals([(1, HorizontalLine::inherit(Style::ascii()).horizontal('-'))]);
+    pub async fn execute(&self) -> Result<(), TdnsError> {
+        let zones = self.get_zones().await?;
+        if let Some(zone_list) = zones {
+            if zone_list.zones.is_empty() {
+                println!("No zones found");
+            } else {
+                // let table_style = Style::ascii_rounded()
+                //     .horizontals([(1, HorizontalLine::inherit(Style::ascii()).horizontal('-'))]);
 
-            for zone in zone_list.zones {
-                let mut zone_table = zone.to_table();
-                self.table_style.print_table(&mut zone_table);
+                for zone in zone_list.zones {
+                    let mut zone_table = zone.to_table();
+                    self.table_style.print_table(&mut zone_table);
+                }
             }
+        } else {
+            println!("No zones found");
         }
 
         Ok(())
