@@ -10,6 +10,8 @@ pub mod tables;
 pub mod zone;
 pub mod zones;
 
+use crate::config::ConfigManager;
+
 #[derive(Parser, Debug)]
 #[command(name = "tdns-cli")]
 #[command(author, version, about, long_about = None)]
@@ -72,7 +74,8 @@ async fn main() {
     match &cli.command {
         Command::Init { force } => {
             println!("Init: force = {:?}", force);
-            match config::create_config_file(&cli.config_file, force) {
+            let cfg_mgr = config::ConfigFileManager;
+            match cfg_mgr.create_config_file(&cli.config_file, force) {
                 Ok(()) => {}
                 Err(error) => {
                     println!("Error creating config file: {:?}", error);
@@ -85,12 +88,14 @@ async fn main() {
             sort_asc,
             table_style,
         } => {
+            let cfg_mgr = config::ConfigFileManager;
             let client = match client::TdnsHttpClient::new() {
                 Ok(client) => client,
                 Err(error) => panic!("Error creating HTTP client: {}", error),
             };
             let sort_mode = zones::ZoneSortMode::from_option(sort_asc);
             let cmd = match zones::ListCmd::create(
+                &cfg_mgr,
                 client,
                 &cli.config_file,
                 sort_mode,

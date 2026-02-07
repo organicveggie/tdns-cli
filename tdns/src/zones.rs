@@ -1,3 +1,4 @@
+use mockall::predicate::*;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use tabled::Table;
@@ -10,6 +11,7 @@ use crate::errors::{TdnsError, TdnsErrorGenerator};
 use crate::tables::TableStyles;
 
 const CMD_NAME: &str = "List Zones";
+pub const API_LIST_ZONES_PATH: &str = "/api/zones/list";
 
 pub enum ZoneSortMode {
     Unsorted,
@@ -150,21 +152,22 @@ impl fmt::Display for Zone {
     }
 }
 
-pub struct ListCmd<C: TdnsClient> {
-    client: C,
+pub struct ListCmd<T: TdnsClient> {
+    client: T,
     config: config::Config,
     sort: ZoneSortMode,
     table_style: TableStyles,
 }
 
-impl<C: TdnsClient> ListCmd<C> {
+impl<T: TdnsClient> ListCmd<T> {
     pub fn create(
-        client: C,
+        config_manager: &dyn config::ConfigManager,
+        client: T,
         config_file: &str,
         sort: ZoneSortMode,
         table_style: TableStyles,
-    ) -> Result<ListCmd<C>, config::ConfigFileError> {
-        let cfg = config::read_config_file(config_file)?;
+    ) -> Result<ListCmd<T>, config::ConfigFileError> {
+        let cfg = config_manager.read_config_file(config_file)?;
         Ok(ListCmd {
             client: client,
             config: cfg,
@@ -173,9 +176,12 @@ impl<C: TdnsClient> ListCmd<C> {
         })
     }
 
-    async fn get_zones(&self) -> Result<Option<ZoneList>, TdnsError> {
+    pub async fn get_zones(&self) -> Result<Option<ZoneList>, TdnsError> {
         let host = self.config.get_host();
-        let url = format!("{host}/api/zones/list?token={}", self.config.get_token());
+        let url = format!(
+            "{host}{API_LIST_ZONES_PATH}?token={}",
+            self.config.get_token()
+        );
 
         let body = match self.client.get_body(&url).await {
             Ok(body) => body,
@@ -236,5 +242,117 @@ impl<C: TdnsClient> TdnsErrorGenerator for ListCmd<C> {
     }
     fn get_host(&self) -> &str {
         self.config.get_host()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TOKEN: &str = "test-token";
+    const HOST: &str = "test-host.example.com";
+
+    #[tokio::test]
+    async fn get_one_zone() {
+        let mut mock_client = crate::client::MockTdnsClient::new();
+        mock_client.expect_get_body().returning(|_| {
+            Ok(r#"{
+                "response": {
+                    "zones": [
+                        {
+                            "name": "example.com",
+                            "type": "Primary",
+                            "internal": false,
+                            "dnssecStatus": "Secure",
+                            "soaSerial": 123456,
+                            "lastModified": "2022-02-26T07:57:08.1842183Z",
+                            "disabled": false
+                        }
+                    ]
+                },
+                "server": "ns.example.com",
+                "status": "success"
+            }"#
+            .to_string())
+        });
+
+        // Create a config file
+        let mut mock_cfg_mgr = config::MockConfigManager::new();
+        mock_cfg_mgr
+            .expect_read_config_file()
+            .returning(|_| Ok(config::Config::new(HOST, TOKEN)));
+
+        let list_cmd = ListCmd::create(
+            &mock_cfg_mgr,
+            mock_client,
+            "config.json",
+            ZoneSortMode::Unsorted,
+            TableStyles::Ascii,
+        )
+        .unwrap();
+
+        let zones = list_cmd.get_zones().await.unwrap().unwrap();
+        assert_eq!(zones.zones.len(), 1);
+
+        let zone = &zones.zones[0];
+        assert_eq!(zone.name, "example.com");
+        assert_eq!(zone.zone_type, "Primary");
+        assert_eq!(zone.internal, false);
+    }
+
+    #[tokio::test]
+    async fn get_two_zones_sorted_alphabetically() {
+        let mut mock_client = crate::client::MockTdnsClient::new();
+        mock_client.expect_get_body().returning(|_| {
+            Ok(r#"{
+                "response": {
+                    "zones": [
+                        {
+                            "name": "example.com",
+                            "type": "Primary",
+                            "internal": false,
+                            "dnssecStatus": "Secure",
+                            "soaSerial": 123456,
+                            "lastModified": "2025-02-26T07:57:08.1842183Z",
+                            "disabled": false
+                        },
+                        {
+                            "name": "0.in-addr.arpa",
+                            "type": "Primary",
+                            "lastModified": "2026-01-14T07:47:55.3604008Z",
+                            "disabled": false,
+                            "soaSerial": 1,
+                            "internal": true,
+                            "dnssecStatus": "Unsigned",
+                            "hasDnssecPrivateKeys": false
+                        }
+                    ]
+                },
+                "server": "ns.example.com",
+                "status": "success"
+            }"#
+            .to_string())
+        });
+
+        // Create a config file
+        let mut mock_cfg_mgr = config::MockConfigManager::new();
+        mock_cfg_mgr
+            .expect_read_config_file()
+            .returning(|_| Ok(config::Config::new(HOST, TOKEN)));
+
+        let list_cmd = ListCmd::create(
+            &mock_cfg_mgr,
+            mock_client,
+            "config.json",
+            ZoneSortMode::AlphabeticalAscending,
+            TableStyles::Ascii,
+        )
+        .unwrap();
+
+        let zones = list_cmd.get_zones().await.unwrap().unwrap();
+        assert_eq!(zones.zones.len(), 2);
+
+        assert_eq!(zones.zones[0].name, "0.in-addr.arpa");
+        assert_eq!(zones.zones[1].name, "example.com");
     }
 }
