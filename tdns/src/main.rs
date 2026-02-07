@@ -20,6 +20,12 @@ pub struct Cli {
 
 #[tokio::main]
 async fn main() {
+    let config_manager = tdns::config::ConfigFileManager;
+    let http_client = match tdns::client::TdnsHttpClient::new() {
+        Ok(c) => c,
+        Err(error) => panic!("Error creating HTTP client: {}", error),
+    };
+
     let cli = Cli::parse();
-    tdns::run_cli(&cli.config_file, &cli.command).await;
+    tdns::run_cli(config_manager, http_client, &cli.config_file, &cli.command).await;
 }

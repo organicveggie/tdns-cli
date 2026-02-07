@@ -171,7 +171,7 @@ pub struct ListCmd<T: TdnsClient> {
 
 impl<T: TdnsClient> ListCmd<T> {
     pub fn create(
-        config_manager: &dyn config::ConfigManager,
+        config_manager: impl config::ConfigManager,
         client: T,
         config_file: &str,
         output_format: &cli::OutputFormat,
@@ -194,6 +194,7 @@ impl<T: TdnsClient> ListCmd<T> {
             "{host}{API_LIST_ZONES_PATH}?token={}",
             self.config.get_token()
         );
+        println!("Requesting zones from URL: {}", url);
 
         let body = match self.client.get_body(&url).await {
             Ok(body) => body,
@@ -201,6 +202,7 @@ impl<T: TdnsClient> ListCmd<T> {
                 return Err(self.make_http_error(error));
             }
         };
+        println!("Response body: {}", body);
 
         let resp: ListZonesResponse = match serde_json::from_str(&body) {
             Ok(r) => r,
@@ -308,9 +310,10 @@ mod tests {
             .returning(|_| Ok(config::Config::new(HOST, TOKEN)));
 
         let list_cmd = ListCmd::create(
-            &mock_cfg_mgr,
+            mock_cfg_mgr,
             mock_client,
             "config.json",
+            &cli::OutputFormat::Table,
             ZoneSortMode::Unsorted,
             TableStyles::Ascii,
         )
@@ -366,9 +369,10 @@ mod tests {
             .returning(|_| Ok(config::Config::new(HOST, TOKEN)));
 
         let list_cmd = ListCmd::create(
-            &mock_cfg_mgr,
+            mock_cfg_mgr,
             mock_client,
             "config.json",
+            &cli::OutputFormat::Table,
             ZoneSortMode::AlphabeticalAscending,
             TableStyles::Ascii,
         )
