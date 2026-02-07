@@ -10,8 +10,11 @@
     strum::EnumString,
     clap::ValueEnum,
 )]
+#[strum(serialize_all = "snake_case")]
 pub enum OutputFormat {
+    #[value(alias = "json", alias = "JSON", alias = "Json")]
     Json,
+    #[value(alias = "table", alias = "TABLE", alias = "Table")]
     Table,
 }
 

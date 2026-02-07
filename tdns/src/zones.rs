@@ -164,6 +164,7 @@ impl fmt::Display for Zone {
 pub struct ListCmd<T: TdnsClient> {
     client: T,
     config: config::Config,
+    output_format: cli::OutputFormat,
     sort: ZoneSortMode,
     table_style: TableStyles,
 }
@@ -173,6 +174,7 @@ impl<T: TdnsClient> ListCmd<T> {
         config_manager: &dyn config::ConfigManager,
         client: T,
         config_file: &str,
+        output_format: &cli::OutputFormat,
         sort: ZoneSortMode,
         table_style: TableStyles,
     ) -> Result<ListCmd<T>, config::ConfigFileError> {
@@ -180,6 +182,7 @@ impl<T: TdnsClient> ListCmd<T> {
         Ok(ListCmd {
             client: client,
             config: cfg,
+            output_format: *output_format,
             sort: sort,
             table_style: table_style,
         })
@@ -228,13 +231,26 @@ impl<T: TdnsClient> ListCmd<T> {
         if let Some(zone_list) = zones {
             if zone_list.zones.is_empty() {
                 println!("No zones found");
-            } else {
-                // let table_style = Style::ascii_rounded()
-                //     .horizontals([(1, HorizontalLine::inherit(Style::ascii()).horizontal('-'))]);
+                return Ok(());
+            }
+            match self.output_format {
+                cli::OutputFormat::Json => {
+                    let json = match serde_json::to_string_pretty(&zone_list) {
+                        Ok(j) => j,
+                        Err(error) => {
+                            return Err(self.make_json_error(error));
+                        }
+                    };
+                    println!("{}", json);
+                }
+                cli::OutputFormat::Table => {
+                    // let table_style = Style::ascii_rounded()
+                    //     .horizontals([(1, HorizontalLine::inherit(Style::ascii()).horizontal('-'))]);
 
-                for zone in zone_list.zones {
-                    let mut zone_table = zone.to_table();
-                    self.table_style.print_table(&mut zone_table);
+                    for zone in zone_list.zones {
+                        let mut zone_table = zone.to_table();
+                        self.table_style.print_table(&mut zone_table);
+                    }
                 }
             }
         } else {

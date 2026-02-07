@@ -47,7 +47,7 @@ enum Command {
     #[command(about = "List all zones")]
     List {
         #[arg(
-            short = 'o',
+            short = 's',
             long = "sort",
             help = "Sort order. By default, zones are unsorted and returned in the order they are stored on the server.",
             default_value_t = cli::SortOrder::Unsorted,
@@ -55,9 +55,17 @@ enum Command {
         sort_order: cli::SortOrder,
 
         #[arg(
+            short = 'o',
+            long = "output",
+            help = "Output format. By default, zones are printed in a table format.",
+            default_value_t = cli::OutputFormat::Table,
+        )]
+        output_format: cli::OutputFormat,
+
+        #[arg(
             value_enum,
             long = "table_style",
-            help = "Table style to use when printing zone records",
+            help = "Table style to use when printing zone records. Only applicable when the output format is table.",
             default_value_t = TableStyles::Ascii,
         )]
         table_style: TableStyles,
@@ -91,6 +99,7 @@ async fn main() {
         }
         Command::List {
             sort_order,
+            output_format,
             table_style,
         } => {
             let cfg_mgr = config::ConfigFileManager;
@@ -103,6 +112,7 @@ async fn main() {
                 &cfg_mgr,
                 client,
                 &cli.config_file,
+                output_format,
                 sort_mode,
                 table_style.clone(),
             ) {
