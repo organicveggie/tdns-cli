@@ -27,8 +27,11 @@ pub enum OutputFormat {
     strum::EnumString,
     clap::ValueEnum,
 )]
+#[strum(serialize_all = "snake_case")]
 pub enum SortOrder {
     Unsorted,
+    #[value(alias = "asc")]
     Ascending,
+    #[value(alias = "desc")]
     Descending,
 }
