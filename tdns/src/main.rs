@@ -3,6 +3,7 @@ use std::error::Error;
 
 use crate::tables::TableStyles;
 
+pub mod cli;
 pub mod client;
 pub mod config;
 pub mod errors;
@@ -42,14 +43,17 @@ enum Command {
         )]
         force: bool,
     },
+
     #[command(about = "List all zones")]
     List {
         #[arg(
             short = 'o',
             long = "sort",
-            help = "Sort zones in ascending alphabetically"
+            help = "Sort order. By default, zones are unsorted and returned in the order they are stored on the server.",
+            default_value_t = cli::SortOrder::Unsorted,
         )]
-        sort_asc: Option<bool>,
+        sort_order: cli::SortOrder,
+
         #[arg(
             value_enum,
             long = "table_style",
@@ -58,6 +62,7 @@ enum Command {
         )]
         table_style: TableStyles,
     },
+
     #[command(about = "Perform actions on a specific zone")]
     Zone {
         #[arg(help = "Domain name of the zone")]
@@ -85,7 +90,7 @@ async fn main() {
             println!("Created config file");
         }
         Command::List {
-            sort_asc,
+            sort_order,
             table_style,
         } => {
             let cfg_mgr = config::ConfigFileManager;
@@ -93,7 +98,7 @@ async fn main() {
                 Ok(client) => client,
                 Err(error) => panic!("Error creating HTTP client: {}", error),
             };
-            let sort_mode = zones::ZoneSortMode::from_option(sort_asc);
+            let sort_mode = zones::ZoneSortMode::from_sort_order(sort_order);
             let cmd = match zones::ListCmd::create(
                 &cfg_mgr,
                 client,

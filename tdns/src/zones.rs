@@ -5,6 +5,7 @@ use tabled::Table;
 use tabled::builder::Builder;
 use tabled::settings::Panel;
 
+use crate::cli;
 use crate::client::TdnsClient;
 use crate::config;
 use crate::errors::{TdnsError, TdnsErrorGenerator};
@@ -30,6 +31,14 @@ impl ZoneSortMode {
                 }
             }
             _ => ZoneSortMode::Unsorted,
+        }
+    }
+
+    pub fn from_sort_order(sort_order: &cli::SortOrder) -> ZoneSortMode {
+        match sort_order {
+            cli::SortOrder::Unsorted => ZoneSortMode::Unsorted,
+            cli::SortOrder::Ascending => ZoneSortMode::AlphabeticalAscending,
+            cli::SortOrder::Descending => ZoneSortMode::AlphabeticalDescending,
         }
     }
 }
