@@ -1,7 +1,8 @@
+use async_trait::async_trait;
 use mockall::automock;
 
-#[allow(async_fn_in_trait)]
 #[automock]
+#[async_trait]
 pub trait TdnsClient {
     async fn get_body(&self, url: &str) -> Result<String, reqwest::Error>;
     async fn post_body(&self, url: &str, body: &str) -> Result<String, reqwest::Error>;
@@ -20,6 +21,7 @@ impl TdnsHttpClient {
     }
 }
 
+#[async_trait]
 impl TdnsClient for TdnsHttpClient {
     async fn get_body(&self, url: &str) -> Result<String, reqwest::Error> {
         let http_resp = self.client.get(url).send().await?;
