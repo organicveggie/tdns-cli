@@ -1,6 +1,8 @@
 use clap::ValueEnum;
 use tabled::{Table, settings::style::Style};
 
+use crate::config;
+
 #[derive(
     Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, strum::Display, strum::EnumString, ValueEnum,
 )]
@@ -67,6 +69,19 @@ impl TableStyles {
             TableStyles::Modern => false,
             _ => true,
         }
+    }
+
+    pub fn output_table(
+        &self,
+        table: &mut Table,
+        output_target: &config::OutputTarget,
+    ) -> std::io::Result<()> {
+        self.apply(table);
+        output_target.write(&format!("{}", table))?;
+        if self.needs_extra_line() {
+            output_target.write("\n")?;
+        }
+        Ok(())
     }
 
     pub fn print_table(&self, table: &mut Table) {

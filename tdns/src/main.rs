@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use clap::Parser;
-use tdns::config::ApplicationConfig;
 
 #[derive(Parser, Debug)]
 #[command(name = "tdns-cli")]
@@ -29,9 +28,10 @@ async fn main() {
         Err(error) => panic!("Error creating HTTP client: {}", error),
     };
 
-    let app_config = ApplicationConfig {
+    let app_config = tdns::config::ApplicationConfig {
         config_manager: Box::new(config_manager),
         tdns_client: Rc::new(http_client),
+        output: tdns::config::OutputTarget::stdout(),
     };
 
     let cli = Cli::parse();

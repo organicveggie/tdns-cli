@@ -1,5 +1,6 @@
+use std::cell::RefCell;
 use std::fs::{self, File, create_dir_all};
-use std::io::Write;
+use std::io::Write as _;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -8,9 +9,55 @@ use serde::{Deserialize, Serialize};
 
 use crate::client;
 
+pub enum OutputTarget {
+    FmtWrite {
+        writer: Rc<RefCell<dyn std::fmt::Write>>,
+    },
+    IoWrite {
+        writer: Rc<RefCell<dyn std::io::Write>>,
+    },
+}
+
+impl OutputTarget {
+    pub fn stdout() -> OutputTarget {
+        OutputTarget::IoWrite {
+            writer: Rc::new(RefCell::new(std::io::stdout())),
+        }
+    }
+
+    pub fn write(&self, s: &str) -> std::io::Result<()> {
+        match self {
+            OutputTarget::FmtWrite { writer } => writer
+                .borrow_mut()
+                .write_str(s)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)),
+            OutputTarget::IoWrite { writer } => writer.borrow_mut().write_all(s.as_bytes()),
+        }
+    }
+
+    pub fn writeln(&self, s: &str) -> std::io::Result<()> {
+        self.write(s)?;
+        self.write("\n")
+    }
+}
+
+impl Clone for OutputTarget {
+    fn clone(&self) -> Self {
+        match self {
+            OutputTarget::FmtWrite { writer } => OutputTarget::FmtWrite {
+                writer: Rc::clone(writer),
+            },
+            OutputTarget::IoWrite { writer } => OutputTarget::IoWrite {
+                writer: Rc::clone(writer),
+            },
+        }
+    }
+}
+
 pub struct ApplicationConfig {
     pub config_manager: Box<dyn ConfigManager>,
     pub tdns_client: Rc<dyn client::TdnsClient>,
+    pub output: OutputTarget,
 }
 
 #[automock]

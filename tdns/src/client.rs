@@ -25,7 +25,6 @@ impl TdnsHttpClient {
 impl TdnsClient for TdnsHttpClient {
     async fn get_body(&self, url: &str) -> Result<String, reqwest::Error> {
         let http_resp = self.client.get(url).send().await?;
-        println!("Received HTTP response: {:?}", http_resp);
         http_resp.text().await
     }
 

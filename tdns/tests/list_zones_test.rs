@@ -1,4 +1,7 @@
-use std::rc::Rc;
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+
+use std::{cell::RefCell, rc::Rc};
 
 use tdns::{config, run_cli};
 
@@ -63,12 +66,54 @@ async fn test_two_zones_sorted() {
         table_style: tdns::tables::TableStyles::Ascii,
     };
 
+    let writer = Rc::new(RefCell::new(Vec::<u8>::new()));
     let app_config = config::ApplicationConfig {
         config_manager: Box::new(mock_cfg_mgr),
         tdns_client: Rc::new(client),
+        output: config::OutputTarget::IoWrite {
+            writer: writer.clone(),
+        },
     };
 
     run_cli(&app_config, "test-config.json", &cli_command).await;
-
     mock.assert();
+
+    let want_output = r#"{
+  "zones": [
+    {
+      "name": "0.in-addr.arpa",
+      "type": "Primary",
+      "internal": true,
+      "dnssecStatus": "Unsigned",
+      "soaSerial": 1,
+      "lastModified": "2026-01-14T07:47:55.3604008Z",
+      "disabled": false,
+      "catalog": null,
+      "expiry": null,
+      "isExpired": null,
+      "notifyFailed": null,
+      "notifyFailedFor": null,
+      "syncFailed": null
+    },
+    {
+      "name": "example.com",
+      "type": "Primary",
+      "internal": false,
+      "dnssecStatus": "Secure",
+      "soaSerial": 123456,
+      "lastModified": "2025-02-26T07:57:08.1842183Z",
+      "disabled": false,
+      "catalog": null,
+      "expiry": null,
+      "isExpired": null,
+      "notifyFailed": null,
+      "notifyFailedFor": null,
+      "syncFailed": null
+    }
+  ]
+}
+"#;
+
+    let output = String::from_utf8(writer.borrow().clone()).unwrap();
+    assert_eq!(output, want_output);
 }

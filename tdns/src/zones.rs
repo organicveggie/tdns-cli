@@ -202,7 +202,6 @@ impl ListCmd {
                 return Err(self.make_http_error(error));
             }
         };
-        println!("Response body: {}", body);
 
         let resp: ListZonesResponse = match serde_json::from_str(&body) {
             Ok(r) => r,
@@ -228,7 +227,7 @@ impl ListCmd {
         }
     }
 
-    pub async fn execute(&self) -> Result<(), TdnsError> {
+    pub async fn execute(&self, output_target: config::OutputTarget) -> Result<(), TdnsError> {
         let zones = self.get_zones().await?;
         if let Some(zone_list) = zones {
             if zone_list.zones.is_empty() {
@@ -243,7 +242,13 @@ impl ListCmd {
                             return Err(self.make_json_error(error));
                         }
                     };
-                    println!("{}", json);
+                    match output_target.writeln(&json) {
+                        Ok(()) => {}
+                        Err(error) => {
+                            return Err(self.make_output_error(error));
+                        }
+                    }
+                    // println!("{}", json);
                 }
                 cli::OutputFormat::Table => {
                     // let table_style = Style::ascii_rounded()
@@ -251,12 +256,26 @@ impl ListCmd {
 
                     for zone in zone_list.zones {
                         let mut zone_table = zone.to_table();
-                        self.table_style.print_table(&mut zone_table);
+                        match self
+                            .table_style
+                            .output_table(&mut zone_table, &output_target)
+                        {
+                            Ok(()) => {}
+                            Err(error) => {
+                                return Err(self.make_output_error(error));
+                            }
+                        }
                     }
                 }
             }
         } else {
-            println!("No zones found");
+            // println!("No zones found");
+            match output_target.writeln("No zones found") {
+                Ok(()) => {}
+                Err(error) => {
+                    return Err(self.make_output_error(error));
+                }
+            }
         }
 
         Ok(())
@@ -274,6 +293,8 @@ impl TdnsErrorGenerator for ListCmd {
 
 #[cfg(test)]
 mod tests {
+    use std::cell::RefCell;
+
     use super::*;
 
     const TOKEN: &str = "test-token";
@@ -312,6 +333,9 @@ mod tests {
         let app_config = config::ApplicationConfig {
             config_manager: Box::new(mock_cfg_mgr),
             tdns_client: Rc::new(mock_client),
+            output: config::OutputTarget::IoWrite {
+                writer: Rc::new(RefCell::new(Vec::new())),
+            },
         };
 
         let list_cmd = ListCmd::create(
@@ -372,9 +396,13 @@ mod tests {
             .expect_read_config_file()
             .returning(|_| Ok(config::Config::new(HOST, TOKEN)));
 
+        let writer = Rc::new(RefCell::new(Vec::<u8>::new()));
         let app_config = config::ApplicationConfig {
             config_manager: Box::new(mock_cfg_mgr),
             tdns_client: Rc::new(mock_client),
+            output: config::OutputTarget::IoWrite {
+                writer: writer.clone(),
+            },
         };
 
         let list_cmd = ListCmd::create(
@@ -391,5 +419,10 @@ mod tests {
 
         assert_eq!(zones.zones[0].name, "0.in-addr.arpa");
         assert_eq!(zones.zones[1].name, "example.com");
+
+        println!(
+            "Output:\n{}",
+            String::from_utf8(writer.borrow().clone()).unwrap()
+        );
     }
 }

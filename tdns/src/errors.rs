@@ -25,6 +25,12 @@ pub enum TdnsError {
         domain: String,
         message: String,
     },
+
+    #[error("{command} output error")]
+    OutputError {
+        command: String,
+        source: std::io::Error,
+    },
 }
 
 pub trait TdnsErrorGenerator {
@@ -43,6 +49,10 @@ pub trait TdnsErrorGenerator {
         Err(self.make_config_error(error))
     }
 
+    fn make_output_err(&self, error: std::io::Error) -> Result<(), TdnsError> {
+        Err(self.make_output_error(error))
+    }
+
     fn make_http_error(&self, error: reqwest::Error) -> TdnsError {
         make_http_error(self.get_command_name(), self.get_host(), error)
     }
@@ -53,6 +63,10 @@ pub trait TdnsErrorGenerator {
 
     fn make_config_error(&self, error: crate::config::ConfigFileError) -> TdnsError {
         make_config_error(self.get_command_name(), error)
+    }
+
+    fn make_output_error(&self, error: std::io::Error) -> TdnsError {
+        make_output_error(self.get_command_name(), error)
     }
 }
 
@@ -73,6 +87,13 @@ pub fn make_json_error(command: &str, error: serde_json::Error) -> TdnsError {
 
 pub fn make_config_error(command: &str, error: crate::config::ConfigFileError) -> TdnsError {
     TdnsError::ConfigFileError {
+        command: command.to_string(),
+        source: error,
+    }
+}
+
+pub fn make_output_error(command: &str, error: std::io::Error) -> TdnsError {
+    TdnsError::OutputError {
         command: command.to_string(),
         source: error,
     }

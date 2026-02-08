@@ -92,7 +92,7 @@ pub async fn run_cli(app_config: &config::ApplicationConfig, config_file: &str, 
                 Ok(cmd) => cmd,
                 Err(error) => panic!("failed to list zones: {}", error),
             };
-            match cmd.execute().await {
+            match cmd.execute(app_config.output.clone()).await {
                 Ok(()) => {}
                 Err(error) => {
                     print_tdns_error(&error);
