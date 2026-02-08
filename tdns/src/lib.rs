@@ -1,7 +1,6 @@
 use clap::Subcommand;
 use std::error::Error;
 
-use crate::client::TdnsClient;
 use crate::tables::TableStyles;
 
 pub mod cli;
@@ -61,16 +60,14 @@ pub enum Command {
     },
 }
 
-pub async fn run_cli(
-    cfg_mgr: impl config::ConfigManager,
-    client: impl TdnsClient,
-    config_file: &str,
-    command: &Command,
-) {
+pub async fn run_cli(app_config: &config::ApplicationConfig, config_file: &str, command: &Command) {
     match command {
         Command::Init { force } => {
             println!("Init: force = {:?}", force);
-            match cfg_mgr.create_config_file(config_file, &force) {
+            match app_config
+                .config_manager
+                .create_config_file(config_file, &force)
+            {
                 Ok(()) => {}
                 Err(error) => {
                     println!("Error creating config file: {:?}", error);
@@ -86,8 +83,7 @@ pub async fn run_cli(
         } => {
             let sort_mode = zones::ZoneSortMode::from_sort_order(&sort_order);
             let cmd = match zones::ListCmd::create(
-                cfg_mgr,
-                client,
+                app_config,
                 config_file,
                 &output_format,
                 sort_mode,

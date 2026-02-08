@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use tdns::{config, run_cli};
 
 const TOKEN: &str = "test-token";
@@ -7,7 +9,6 @@ async fn test_two_zones_sorted() {
     // Request a new server from the pool
     let mut server = mockito::Server::new_async().await;
     let url = server.url();
-    println!("Mock server running at: {}", url);
 
     // Create mock response for the /api/zones/list endpoint
     let mock = server
@@ -62,7 +63,12 @@ async fn test_two_zones_sorted() {
         table_style: tdns::tables::TableStyles::Ascii,
     };
 
-    run_cli(mock_cfg_mgr, client, "test-config.json", &cli_command).await;
+    let app_config = config::ApplicationConfig {
+        config_manager: Box::new(mock_cfg_mgr),
+        tdns_client: Rc::new(client),
+    };
+
+    run_cli(&app_config, "test-config.json", &cli_command).await;
 
     mock.assert();
 }

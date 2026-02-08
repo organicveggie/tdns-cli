@@ -1,6 +1,7 @@
 use mockall::predicate::*;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::rc::Rc;
 use tabled::Table;
 use tabled::builder::Builder;
 use tabled::settings::Panel;
@@ -161,26 +162,25 @@ impl fmt::Display for Zone {
     }
 }
 
-pub struct ListCmd<T: TdnsClient> {
-    client: T,
+pub struct ListCmd {
+    client: Rc<dyn TdnsClient>,
     config: config::Config,
     output_format: cli::OutputFormat,
     sort: ZoneSortMode,
     table_style: TableStyles,
 }
 
-impl<T: TdnsClient> ListCmd<T> {
+impl ListCmd {
     pub fn create(
-        config_manager: impl config::ConfigManager,
-        client: T,
+        app_config: &config::ApplicationConfig,
         config_file: &str,
         output_format: &cli::OutputFormat,
         sort: ZoneSortMode,
         table_style: TableStyles,
-    ) -> Result<ListCmd<T>, config::ConfigFileError> {
-        let cfg = config_manager.read_config_file(config_file)?;
+    ) -> Result<ListCmd, config::ConfigFileError> {
+        let cfg = app_config.config_manager.read_config_file(config_file)?;
         Ok(ListCmd {
-            client: client,
+            client: Rc::clone(&app_config.tdns_client),
             config: cfg,
             output_format: *output_format,
             sort: sort,
@@ -263,7 +263,7 @@ impl<T: TdnsClient> ListCmd<T> {
     }
 }
 
-impl<C: TdnsClient> TdnsErrorGenerator for ListCmd<C> {
+impl TdnsErrorGenerator for ListCmd {
     fn get_command_name(&self) -> &str {
         CMD_NAME
     }
@@ -309,9 +309,13 @@ mod tests {
             .expect_read_config_file()
             .returning(|_| Ok(config::Config::new(HOST, TOKEN)));
 
+        let app_config = config::ApplicationConfig {
+            config_manager: Box::new(mock_cfg_mgr),
+            tdns_client: Rc::new(mock_client),
+        };
+
         let list_cmd = ListCmd::create(
-            mock_cfg_mgr,
-            mock_client,
+            &app_config,
             "config.json",
             &cli::OutputFormat::Table,
             ZoneSortMode::Unsorted,
@@ -368,9 +372,13 @@ mod tests {
             .expect_read_config_file()
             .returning(|_| Ok(config::Config::new(HOST, TOKEN)));
 
+        let app_config = config::ApplicationConfig {
+            config_manager: Box::new(mock_cfg_mgr),
+            tdns_client: Rc::new(mock_client),
+        };
+
         let list_cmd = ListCmd::create(
-            mock_cfg_mgr,
-            mock_client,
+            &app_config,
             "config.json",
             &cli::OutputFormat::Table,
             ZoneSortMode::AlphabeticalAscending,

@@ -1,9 +1,17 @@
 use std::fs::{self, File, create_dir_all};
 use std::io::Write;
 use std::path::Path;
+use std::rc::Rc;
 
 use mockall::automock;
 use serde::{Deserialize, Serialize};
+
+use crate::client;
+
+pub struct ApplicationConfig {
+    pub config_manager: Box<dyn ConfigManager>,
+    pub tdns_client: Rc<dyn client::TdnsClient>,
+}
 
 #[automock]
 pub trait ConfigManager {
