@@ -103,7 +103,6 @@ pub struct AddRecordResponse {
 }
 
 impl RecordTypeCommand {
-    #[allow(unused_variables)]
     pub async fn run(
         &self,
         app_config: &config::ApplicationConfig,
@@ -135,10 +134,10 @@ impl RecordTypeCommand {
 
         match self {
             RecordTypeCommand::A { address, ptr, ptr_zone, update_svcb_hints } => {
-                url = add_address_params(&url, address, *ptr, *ptr_zone);
+                url = add_address_params(&url, address, *ptr, *ptr_zone, *update_svcb_hints);
             }
             RecordTypeCommand::AAAA { address, ptr, ptr_zone, update_svcb_hints } => {
-                url = add_address_params(&url, address, *ptr, *ptr_zone);
+                url = add_address_params(&url, address, *ptr, *ptr_zone, *update_svcb_hints);
             }
             RecordTypeCommand::CNAME { cname } => {
                 url = format!("{}&cname={}", url, cname);
@@ -203,13 +202,22 @@ fn make_domain_name(domain: &str, zone: &str) -> String {
     }
 }
 
-fn add_address_params(url: &str, address: &str, ptr: bool, ptr_zone: bool) -> String {
+fn add_address_params(
+    url: &str,
+    address: &str,
+    ptr: bool,
+    ptr_zone: bool,
+    update_svcb_hints: bool,
+) -> String {
     let mut updated_url = format!("{}&address={}", url, address);
     if ptr {
         updated_url = format!("{}&ptr=true", updated_url);
     }
     if ptr_zone {
         updated_url = format!("{}&ptrZone=true", updated_url);
+    }
+    if update_svcb_hints {
+        updated_url = format!("{}&updateSvcbHints=true", updated_url);
     }
     updated_url
 }
@@ -238,13 +246,21 @@ mod tests {
 
         #[rustfmt::skip]
         let cases = vec![
-            ("1.2.3.4", false, false, "http://example.com/api?token=abc&address=1.2.3.4"),
-            ("2.3.4.5", true, false, "http://example.com/api?token=abc&address=2.3.4.5&ptr=true"),
-            ("3.4.5.6", false, true, "http://example.com/api?token=abc&address=3.4.5.6&ptrZone=true"),
-            ("4.5.6.7", true, true, "http://example.com/api?token=abc&address=4.5.6.7&ptr=true&ptrZone=true"),
+            ("1.2.3.4", false, false, false, "http://example.com/api?token=abc&address=1.2.3.4"),
+            ("2.3.4.5", true, false, false, "http://example.com/api?token=abc&address=2.3.4.5&ptr=true"),
+            ("3.4.5.6", false, true, false, "http://example.com/api?token=abc&address=3.4.5.6&ptrZone=true"),
+            ("4.5.6.7", true, true, false, "http://example.com/api?token=abc&address=4.5.6.7&ptr=true&ptrZone=true"),
+            ("5.6.7.8", false, false, true, "http://example.com/api?token=abc&address=5.6.7.8&updateSvcbHints=true"),
+            ("6.7.8.9", true, false, true, "http://example.com/api?token=abc&address=6.7.8.9&ptr=true&updateSvcbHints=true"),
+            ("7.8.9.0", false, true, true, "http://example.com/api?token=abc&address=7.8.9.0&ptrZone=true&updateSvcbHints=true"),
+            ("8.9.0.1", true, true, true, "http://example.com/api?token=abc&address=8.9.0.1&ptr=true&ptrZone=true&updateSvcbHints=true"),
+            
         ];
-        for (address, ptr, ptr_zone, expected) in cases {
-            assert_eq!(add_address_params(base_url, address, ptr, ptr_zone), expected);
+        for (address, ptr, ptr_zone, update_svcb_hints, expected) in cases {
+            assert_eq!(
+                add_address_params(base_url, address, ptr, ptr_zone, update_svcb_hints),
+                expected
+            );
         }
     }
 }
