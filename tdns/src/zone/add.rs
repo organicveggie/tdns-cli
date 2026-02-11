@@ -1,6 +1,7 @@
 use clap::Subcommand;
 use serde::Deserialize;
 
+use crate::client::QueryBuilder;
 use crate::{config, errors};
 
 pub const CMD_NAME: &str = "Add Zone Record";
@@ -124,48 +125,62 @@ impl RecordTypeCommand {
         };
 
         let host = cfg.get_host();
-        let mut url = format!(
-            "{host}/api/zones/records/add?token={}&domain={}&zone={}&type={}",
-            cfg.get_token(),
-            domain_name,
-            zone,
-            self.to_string()
-        );
+        let mut qb = QueryBuilder::new()
+            .add_param("token", &cfg.get_token())
+            .add_param("domain", &domain_name)
+            .add_param("zone", &zone)
+            .add_param("type", &self.to_string());
+
+        if overwrite {
+            qb = qb.add_param("overwrite", "true");
+        }
+        if let Some(comments) = comments {
+            qb = qb.add_param("comments", &comments);
+        }
+        if let Some(ttl) = ttl {
+            qb = qb.add_param("ttl", &ttl.to_string());
+        }
+        if let Some(expiry_ttl) = expiry_ttl {
+            qb = qb.add_param("expiryTtl", &expiry_ttl.to_string());
+        }
 
         match self {
             RecordTypeCommand::A { address, ptr, ptr_zone, update_svcb_hints } => {
-                url = add_address_params(&url, address, *ptr, *ptr_zone, *update_svcb_hints);
+                let addr_qb = make_address_params(address, *ptr, *ptr_zone, *update_svcb_hints);
+                qb = qb.merge(addr_qb);
             }
             RecordTypeCommand::AAAA { address, ptr, ptr_zone, update_svcb_hints } => {
-                url = add_address_params(&url, address, *ptr, *ptr_zone, *update_svcb_hints);
+                let addr_qb = make_address_params(address, *ptr, *ptr_zone, *update_svcb_hints);
+                qb = qb.merge(addr_qb);
             }
             RecordTypeCommand::CNAME { cname } => {
-                url = format!("{}&cname={}", url, cname);
+                qb = qb.add_param("cname", cname);
             }
             RecordTypeCommand::TXT { text, split_text } => {
-                url = if *split_text {
-                    format!("{}&text={}&splitText=true", url, text)
-                } else {
-                    format!("{}&text={}", url, text)
-                };
+                qb = qb.add_param("text", text);
+                if *split_text {
+                    qb = qb.add_param("splitText", "true");
+                }
             }
             RecordTypeCommand::MX { exchange, preference } => {
-                url = format!("{}&exchange={}", url, exchange);
+                qb = qb.add_param("exchange", exchange);
                 if let Some(pref) = preference {
-                    url = format!("{}&preference={}", url, pref);
+                    qb = qb.add_param("preference", &pref.to_string());
                 }
             }
             RecordTypeCommand::NS { name_server, glue } => {
-                url = format!("{}&nameServer={}", url, name_server);
+                qb = qb.add_param("nameServer", name_server);
                 if let Some(glue_addr) = glue {
-                    url = format!("{}&glue={}", url, glue_addr);
+                    qb = qb.add_param("glue", glue_addr);
                 }
             }
             RecordTypeCommand::PTR { ptr_name } => {
-                url = format!("{}&ptrName={}", url, ptr_name);
+                qb = qb.add_param("ptrName", ptr_name);
             }
             _ => { /* Other record types can be handled here */ }
         }
+
+        let url = format!("{host}/api/zones/records/add?{}", qb.build());
 
         let body = match app_config.tdns_client.get_body(&url).await {
             Ok(b) => b,
@@ -202,24 +217,23 @@ fn make_domain_name(domain: &str, zone: &str) -> String {
     }
 }
 
-fn add_address_params(
-    url: &str,
+fn make_address_params(
     address: &str,
     ptr: bool,
     ptr_zone: bool,
     update_svcb_hints: bool,
-) -> String {
-    let mut updated_url = format!("{}&address={}", url, address);
+) -> QueryBuilder {
+    let mut qb = QueryBuilder::new().add_param("address", address);
     if ptr {
-        updated_url = format!("{}&ptr=true", updated_url);
+        qb = qb.add_param("ptr", "true");
     }
     if ptr_zone {
-        updated_url = format!("{}&ptrZone=true", updated_url);
+        qb = qb.add_param("ptrZone", "true");
     }
     if update_svcb_hints {
-        updated_url = format!("{}&updateSvcbHints=true", updated_url);
+        qb = qb.add_param("updateSvcbHints", "true");
     }
-    updated_url
+    qb
 }
 
 #[cfg(test)]
@@ -241,24 +255,22 @@ mod tests {
     }
 
     #[test]
-    fn add_address_params_test() {
-        let base_url = "http://example.com/api?token=abc";
-
+    fn make_address_params_test() {
         #[rustfmt::skip]
         let cases = vec![
-            ("1.2.3.4", false, false, false, "http://example.com/api?token=abc&address=1.2.3.4"),
-            ("2.3.4.5", true, false, false, "http://example.com/api?token=abc&address=2.3.4.5&ptr=true"),
-            ("3.4.5.6", false, true, false, "http://example.com/api?token=abc&address=3.4.5.6&ptrZone=true"),
-            ("4.5.6.7", true, true, false, "http://example.com/api?token=abc&address=4.5.6.7&ptr=true&ptrZone=true"),
-            ("5.6.7.8", false, false, true, "http://example.com/api?token=abc&address=5.6.7.8&updateSvcbHints=true"),
-            ("6.7.8.9", true, false, true, "http://example.com/api?token=abc&address=6.7.8.9&ptr=true&updateSvcbHints=true"),
-            ("7.8.9.0", false, true, true, "http://example.com/api?token=abc&address=7.8.9.0&ptrZone=true&updateSvcbHints=true"),
-            ("8.9.0.1", true, true, true, "http://example.com/api?token=abc&address=8.9.0.1&ptr=true&ptrZone=true&updateSvcbHints=true"),
+            ("1.2.3.4", false, false, false, "address=1.2.3.4"),
+            ("2.3.4.5", true, false, false, "address=2.3.4.5&ptr=true"),
+            ("3.4.5.6", false, true, false, "address=3.4.5.6&ptrZone=true"),
+            ("4.5.6.7", true, true, false, "address=4.5.6.7&ptr=true&ptrZone=true"),
+            ("5.6.7.8", false, false, true, "address=5.6.7.8&updateSvcbHints=true"),
+            ("6.7.8.9", true, false, true, "address=6.7.8.9&ptr=true&updateSvcbHints=true"),
+            ("7.8.9.0", false, true, true, "address=7.8.9.0&ptrZone=true&updateSvcbHints=true"),
+            ("8.9.0.1", true, true, true, "address=8.9.0.1&ptr=true&ptrZone=true&updateSvcbHints=true"),
             
         ];
         for (address, ptr, ptr_zone, update_svcb_hints, expected) in cases {
             assert_eq!(
-                add_address_params(base_url, address, ptr, ptr_zone, update_svcb_hints),
+                make_address_params(address, ptr, ptr_zone, update_svcb_hints).build(),
                 expected
             );
         }
