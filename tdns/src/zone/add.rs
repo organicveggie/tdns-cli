@@ -10,17 +10,9 @@ pub enum RecordTypeCommand {
     A {
         #[arg(help = "IPv4 address for the A record")]
         address: String,
-        #[arg(
-            long = "ptr",
-            default_value_t = false,
-            help = "Create a reverse PTR record for the IP address"
-        )]
+        #[arg(long = "ptr", default_value_t = false, help = "Create a reverse PTR record for the IP address")]
         ptr: bool,
-        #[arg(
-            long = "ptr_zone",
-            default_value_t = false,
-            help = "Create a reverse zone for the PTR record"
-        )]
+        #[arg(long = "ptr_zone", default_value_t = false, help = "Create a reverse zone for the PTR record")]
         ptr_zone: bool,
         #[arg(
             long = "update_svcb_hints",
@@ -32,17 +24,9 @@ pub enum RecordTypeCommand {
     AAAA {
         #[arg(help = "IPv6 address for the AAAA record")]
         address: String,
-        #[arg(
-            long = "ptr",
-            default_value_t = false,
-            help = "Create a reverse PTR record for the IP address"
-        )]
+        #[arg(long = "ptr", default_value_t = false, help = "Create a reverse PTR record for the IP address")]
         ptr: bool,
-        #[arg(
-            long = "ptr_zone",
-            default_value_t = false,
-            help = "Create a reverse zone for the PTR record"
-        )]
+        #[arg(long = "ptr_zone", default_value_t = false, help = "Create a reverse zone for the PTR record")]
         ptr_zone: bool,
         #[arg(
             long = "update_svcb_hints",
@@ -134,20 +118,10 @@ impl RecordTypeCommand {
         );
 
         match self {
-            RecordTypeCommand::A {
-                address,
-                ptr,
-                ptr_zone,
-                update_svcb_hints,
-            } => {
+            RecordTypeCommand::A { address, ptr, ptr_zone, update_svcb_hints } => {
                 url = add_address_params(&url, address, *ptr, *ptr_zone);
             }
-            RecordTypeCommand::AAAA {
-                address,
-                ptr,
-                ptr_zone,
-                update_svcb_hints,
-            } => {
+            RecordTypeCommand::AAAA { address, ptr, ptr_zone, update_svcb_hints } => {
                 url = add_address_params(&url, address, *ptr, *ptr_zone);
             }
             RecordTypeCommand::CNAME { cname } => {
@@ -160,10 +134,7 @@ impl RecordTypeCommand {
                     format!("{}&text={}", url, text)
                 };
             }
-            RecordTypeCommand::MX {
-                exchange,
-                preference,
-            } => {
+            RecordTypeCommand::MX { exchange, preference } => {
                 url = format!("{}&exchange={}", url, exchange);
                 if let Some(pref) = preference {
                     url = format!("{}&preference={}", url, pref);
@@ -209,11 +180,7 @@ fn make_domain_name(domain: &str, zone: &str) -> String {
         return domain.to_string();
     }
 
-    if domain.ends_with('.') {
-        format!("{}{}", domain, zone)
-    } else {
-        format!("{}.{}", domain, zone)
-    }
+    if domain.ends_with('.') { format!("{}{}", domain, zone) } else { format!("{}.{}", domain, zone) }
 }
 
 fn add_address_params(url: &str, address: &str, ptr: bool, ptr_zone: bool) -> String {
@@ -247,39 +214,15 @@ mod tests {
 
     #[test]
     fn add_address_params_test() {
-        // add_address_params(url: &str, address: &str, ptr: bool, ptr_zone: bool)
         let base_url = "http://example.com/api?token=abc";
         let cases = vec![
-            (
-                "1.2.3.4",
-                false,
-                false,
-                "http://example.com/api?token=abc&address=1.2.3.4",
-            ),
-            (
-                "2.3.4.5",
-                true,
-                false,
-                "http://example.com/api?token=abc&address=2.3.4.5&ptr=true",
-            ),
-            (
-                "3.4.5.6",
-                false,
-                true,
-                "http://example.com/api?token=abc&address=3.4.5.6&ptrZone=true",
-            ),
-            (
-                "4.5.6.7",
-                true,
-                true,
-                "http://example.com/api?token=abc&address=4.5.6.7&ptr=true&ptrZone=true",
-            ),
+            ("1.2.3.4", false, false, "http://example.com/api?token=abc&address=1.2.3.4"),
+            ("2.3.4.5", true, false, "http://example.com/api?token=abc&address=2.3.4.5&ptr=true"),
+            ("3.4.5.6", false, true, "http://example.com/api?token=abc&address=3.4.5.6&ptrZone=true"),
+            ("4.5.6.7", true, true, "http://example.com/api?token=abc&address=4.5.6.7&ptr=true&ptrZone=true"),
         ];
         for (address, ptr, ptr_zone, expected) in cases {
-            assert_eq!(
-                add_address_params(base_url, address, ptr, ptr_zone),
-                expected
-            );
+            assert_eq!(add_address_params(base_url, address, ptr, ptr_zone), expected);
         }
     }
 }
