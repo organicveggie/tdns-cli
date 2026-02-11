@@ -1,5 +1,4 @@
 use clap::Subcommand;
-use reqwest::Client;
 use serde::Deserialize;
 
 use crate::{config, errors};
@@ -107,6 +106,7 @@ impl RecordTypeCommand {
     #[allow(unused_variables)]
     pub async fn run(
         &self,
+        app_config: &config::ApplicationConfig,
         config_file_name: &str,
         zone: String,
         domain: String,
@@ -117,7 +117,7 @@ impl RecordTypeCommand {
     ) -> Result<(), errors::TdnsError> {
         let domain_name = make_domain_name(&domain, &zone);
 
-        let cfg = match config::read_config_file(config_file_name) {
+        let cfg = match app_config.config_manager.read_config_file(config_file_name) {
             Ok(c) => c,
             Err(error) => {
                 return Err(errors::make_config_error(CMD_NAME, error));
@@ -125,13 +125,6 @@ impl RecordTypeCommand {
         };
 
         let host = cfg.get_host();
-        let client = match Client::builder().danger_accept_invalid_certs(true).build() {
-            Ok(c) => c,
-            Err(error) => {
-                return Err(errors::make_http_error(CMD_NAME, host, error));
-            }
-        };
-
         let mut url = format!(
             "{host}/api/zones/records/add?token={}&domain={}&zone={}&type={}",
             cfg.get_token(),
@@ -188,16 +181,8 @@ impl RecordTypeCommand {
             _ => { /* Other record types can be handled here */ }
         }
 
-        // println!("Add Record URL: {}", url);
-        let http_resp = match client.get(url).send().await {
-            Ok(resp) => resp,
-            Err(error) => {
-                return Err(errors::make_http_error(CMD_NAME, host, error));
-            }
-        };
-
-        let body = match http_resp.text().await {
-            Ok(body) => body,
+        let body = match app_config.tdns_client.get_body(&url).await {
+            Ok(b) => b,
             Err(error) => {
                 return Err(errors::make_http_error(CMD_NAME, host, error));
             }
@@ -240,4 +225,61 @@ fn add_address_params(url: &str, address: &str, ptr: bool, ptr_zone: bool) -> St
         updated_url = format!("{}&ptrZone=true", updated_url);
     }
     updated_url
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn make_domain_name_test() {
+        let cases = vec![
+            ("www", "example.com", "www.example.com"),
+            ("www.example.com", "example.com", "www.example.com"),
+            ("www.", "example.com", "www.example.com"),
+            ("www.sub", "example.com", "www.sub.example.com"),
+            ("www.sub.", "example.com", "www.sub.example.com"),
+        ];
+        for (domain, zone, expected) in cases {
+            assert_eq!(make_domain_name(domain, zone), expected);
+        }
+    }
+
+    #[test]
+    fn add_address_params_test() {
+        // add_address_params(url: &str, address: &str, ptr: bool, ptr_zone: bool)
+        let base_url = "http://example.com/api?token=abc";
+        let cases = vec![
+            (
+                "1.2.3.4",
+                false,
+                false,
+                "http://example.com/api?token=abc&address=1.2.3.4",
+            ),
+            (
+                "2.3.4.5",
+                true,
+                false,
+                "http://example.com/api?token=abc&address=2.3.4.5&ptr=true",
+            ),
+            (
+                "3.4.5.6",
+                false,
+                true,
+                "http://example.com/api?token=abc&address=3.4.5.6&ptrZone=true",
+            ),
+            (
+                "4.5.6.7",
+                true,
+                true,
+                "http://example.com/api?token=abc&address=4.5.6.7&ptr=true&ptrZone=true",
+            ),
+        ];
+        for (address, ptr, ptr_zone, expected) in cases {
+            assert_eq!(
+                add_address_params(base_url, address, ptr, ptr_zone),
+                expected
+            );
+        }
+    }
 }

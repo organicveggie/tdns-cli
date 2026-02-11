@@ -1,5 +1,6 @@
 use clap::Subcommand;
 
+use crate::config;
 use crate::errors::{self, TdnsError};
 use crate::tables::TableStyles;
 
@@ -74,7 +75,12 @@ the record’s last modified time."
 }
 
 impl Command {
-    pub async fn run(&self, config_file_name: &str, zone: String) -> Result<(), errors::TdnsError> {
+    pub async fn run(
+        &self,
+        app_config: &config::ApplicationConfig,
+        config_file_name: &str,
+        zone: String,
+    ) -> Result<(), errors::TdnsError> {
         match self {
             Command::Add {
                 domain,
@@ -86,6 +92,7 @@ impl Command {
             } => {
                 return add_command
                     .run(
+                        app_config,
                         config_file_name,
                         zone,
                         domain.clone(),

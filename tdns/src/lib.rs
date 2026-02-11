@@ -100,7 +100,10 @@ pub async fn run_cli(app_config: &config::ApplicationConfig, config_file: &str, 
             }
         }
         Command::Zone { zone, zone_command } => {
-            match zone::Command::run(&zone_command, config_file, zone.clone()).await {
+            match zone_command
+                .run(app_config, config_file, zone.clone())
+                .await
+            {
                 Ok(()) => {}
                 Err(error) => {
                     print_tdns_error(&error);
