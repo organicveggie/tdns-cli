@@ -10,9 +10,17 @@ pub enum RecordTypeCommand {
     A {
         #[arg(help = "IPv4 address for the A record")]
         address: String,
-        #[arg(long = "ptr", default_value_t = false, help = "Create a reverse PTR record for the IP address")]
+        #[arg(
+            long = "ptr",
+            default_value_t = false,
+            help = "Create a reverse PTR record for the IP address"
+        )]
         ptr: bool,
-        #[arg(long = "ptr_zone", default_value_t = false, help = "Create a reverse zone for the PTR record")]
+        #[arg(
+            long = "ptr_zone",
+            default_value_t = false,
+            help = "Create a reverse zone for the PTR record"
+        )]
         ptr_zone: bool,
         #[arg(
             long = "update_svcb_hints",
@@ -24,9 +32,17 @@ pub enum RecordTypeCommand {
     AAAA {
         #[arg(help = "IPv6 address for the AAAA record")]
         address: String,
-        #[arg(long = "ptr", default_value_t = false, help = "Create a reverse PTR record for the IP address")]
+        #[arg(
+            long = "ptr",
+            default_value_t = false,
+            help = "Create a reverse PTR record for the IP address"
+        )]
         ptr: bool,
-        #[arg(long = "ptr_zone", default_value_t = false, help = "Create a reverse zone for the PTR record")]
+        #[arg(
+            long = "ptr_zone",
+            default_value_t = false,
+            help = "Create a reverse zone for the PTR record"
+        )]
         ptr_zone: bool,
         #[arg(
             long = "update_svcb_hints",
@@ -180,7 +196,11 @@ fn make_domain_name(domain: &str, zone: &str) -> String {
         return domain.to_string();
     }
 
-    if domain.ends_with('.') { format!("{}{}", domain, zone) } else { format!("{}.{}", domain, zone) }
+    if domain.ends_with('.') {
+        format!("{}{}", domain, zone)
+    } else {
+        format!("{}.{}", domain, zone)
+    }
 }
 
 fn add_address_params(url: &str, address: &str, ptr: bool, ptr_zone: bool) -> String {
@@ -215,6 +235,8 @@ mod tests {
     #[test]
     fn add_address_params_test() {
         let base_url = "http://example.com/api?token=abc";
+
+        #[rustfmt::skip]
         let cases = vec![
             ("1.2.3.4", false, false, "http://example.com/api?token=abc&address=1.2.3.4"),
             ("2.3.4.5", true, false, "http://example.com/api?token=abc&address=2.3.4.5&ptr=true"),
