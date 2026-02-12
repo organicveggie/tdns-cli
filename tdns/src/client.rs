@@ -14,7 +14,7 @@ pub trait TdnsClient {
     async fn post_body(
         &self,
         url: &str,
-        body: &str,
+        body: &Option<String>,
         query_params: &Option<QueryBuilder>,
     ) -> Result<String, reqwest::Error>;
 }
@@ -47,10 +47,13 @@ impl TdnsClient for TdnsHttpClient {
     async fn post_body(
         &self,
         url: &str,
-        body: &str,
+        body: &Option<String>,
         query_params: &Option<QueryBuilder>,
     ) -> Result<String, reqwest::Error> {
-        let mut request = self.client.post(url).body(body.to_string());
+        let mut request = self.client.post(url);
+        if let Some(body_str) = body {
+            request = request.body(body_str.clone());
+        }
         if let Some(params) = query_params {
             request = request.query(&params);
         }

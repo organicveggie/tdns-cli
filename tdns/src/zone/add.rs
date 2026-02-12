@@ -6,6 +6,7 @@ use crate::client::QueryBuilder;
 use crate::{config, errors};
 
 pub const CMD_NAME: &str = "Add Zone Record";
+pub const API_ADD_RECORD_PATH: &str = "/api/zones/records/add";
 
 #[derive(Debug, strum::Display, strum::EnumString, Subcommand)]
 pub enum RecordTypeCommand {
@@ -128,9 +129,9 @@ impl RecordTypeCommand {
             self.make_query_params(&cfg, &domain_name, &zone, overwrite, comments, ttl, expiry_ttl);
 
         let host = cfg.get_host();
-        let url = format!("{host}/api/zones/records/add");
+        let url = format!("{host}{API_ADD_RECORD_PATH}");
 
-        let body = match app_config.tdns_client.get_body(&url, &Some(query_params)).await {
+        let body = match app_config.tdns_client.post_body(&url, &None, &Some(query_params)).await {
             Ok(b) => b,
             Err(error) => {
                 return Err(errors::make_http_error(CMD_NAME, host, error));
