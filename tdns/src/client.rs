@@ -1,12 +1,22 @@
 use async_trait::async_trait;
 use mockall::automock;
+use serde::Serialize;
 use std::collections::BTreeMap;
 
 #[automock]
 #[async_trait]
 pub trait TdnsClient {
-    async fn get_body(&self, url: &str) -> Result<String, reqwest::Error>;
-    async fn post_body(&self, url: &str, body: &str) -> Result<String, reqwest::Error>;
+    async fn get_body(
+        &self,
+        url: &str,
+        query_params: &Option<QueryBuilder>,
+    ) -> Result<String, reqwest::Error>;
+    async fn post_body(
+        &self,
+        url: &str,
+        body: &str,
+        query_params: &Option<QueryBuilder>,
+    ) -> Result<String, reqwest::Error>;
 }
 
 pub struct TdnsHttpClient {
@@ -22,23 +32,53 @@ impl TdnsHttpClient {
 
 #[async_trait]
 impl TdnsClient for TdnsHttpClient {
-    async fn get_body(&self, url: &str) -> Result<String, reqwest::Error> {
-        let http_resp = self.client.get(url).send().await?;
-        http_resp.text().await
+    async fn get_body(
+        &self,
+        url: &str,
+        query_params: &Option<QueryBuilder>,
+    ) -> Result<String, reqwest::Error> {
+        let mut request = self.client.get(url);
+        if let Some(params) = query_params {
+            request = request.query(&params);
+        }
+        request.send().await?.text().await
     }
 
-    async fn post_body(&self, url: &str, body: &str) -> Result<String, reqwest::Error> {
-        let http_resp = self.client.post(url).body(body.to_string()).send().await?;
-        http_resp.text().await
+    async fn post_body(
+        &self,
+        url: &str,
+        body: &str,
+        query_params: &Option<QueryBuilder>,
+    ) -> Result<String, reqwest::Error> {
+        let mut request = self.client.post(url).body(body.to_string());
+        if let Some(params) = query_params {
+            request = request.query(&params);
+        }
+        request.send().await?.text().await
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(transparent)]
 pub struct QueryBuilder {
     params: BTreeMap<String, String>,
 }
 
+impl<K: Ord + std::fmt::Display, const N: usize> From<[(K, K); N]> for QueryBuilder {
+    fn from(arr: [(K, K); N]) -> QueryBuilder {
+        let mut params = BTreeMap::new();
+        for (key, value) in arr.iter() {
+            params.insert(key.to_string(), value.to_string());
+        }
+        QueryBuilder { params }
+    }
+}
+
 impl QueryBuilder {
+    pub fn from_map(map: BTreeMap<String, String>) -> QueryBuilder {
+        QueryBuilder { params: map }
+    }
+
     pub fn new() -> QueryBuilder {
         QueryBuilder { params: BTreeMap::new() }
     }
@@ -55,15 +95,8 @@ impl QueryBuilder {
         self
     }
 
-    pub fn build(self) -> String {
-        let mut query = String::new();
-        for (key, value) in self.params {
-            if !query.is_empty() {
-                query.push('&');
-            }
-            query.push_str(&format!("{}={}", key, value));
-        }
-        query
+    pub fn clone_to_map(&self) -> BTreeMap<String, String> {
+        self.params.clone()
     }
 }
 
@@ -72,15 +105,34 @@ mod query_builder_tests {
     use super::*;
 
     #[test]
-    fn test_one_param() {
-        let query = QueryBuilder::new().add_param("key1", "value1").build();
-        assert_eq!(query, "key1=value1");
+    fn test_one_param_to_map() {
+        let qb = QueryBuilder::new().add_param("key1", "value1");
+        assert_eq!(qb.clone_to_map(), BTreeMap::from([("key1".to_string(), "value1".to_string())]));
     }
 
     #[test]
     fn test_multiple_params() {
-        let query =
-            QueryBuilder::new().add_param("key1", "value1").add_param("key2", "value2").build();
-        assert_eq!(query, "key1=value1&key2=value2");
+        let qb = QueryBuilder::new().add_param("key2", "value2").add_param("key1", "value1");
+        assert_eq!(
+            qb.clone_to_map(),
+            BTreeMap::from([
+                ("key1".to_string(), "value1".to_string()),
+                ("key2".to_string(), "value2".to_string())
+            ])
+        );
+    }
+
+    #[test]
+    fn test_merge() {
+        let qb1 = QueryBuilder::new().add_param("key1", "value1");
+        let qb2 = QueryBuilder::new().add_param("key2", "value2");
+        let merged = qb1.merge(qb2);
+        assert_eq!(
+            merged.clone_to_map(),
+            BTreeMap::from([
+                ("key1".to_string(), "value1".to_string()),
+                ("key2".to_string(), "value2".to_string())
+            ])
+        );
     }
 }

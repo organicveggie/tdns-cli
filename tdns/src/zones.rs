@@ -7,7 +7,7 @@ use tabled::builder::Builder;
 use tabled::settings::Panel;
 
 use crate::cli;
-use crate::client::TdnsClient;
+use crate::client::{QueryBuilder, TdnsClient};
 use crate::config;
 use crate::errors::{TdnsError, TdnsErrorGenerator};
 use crate::tables::TableStyles;
@@ -92,11 +92,7 @@ impl Zone {
         let mut b = Builder::with_capacity(5, 2);
         if self.disabled || self.internal {
             let status = if self.disabled {
-                if self.internal {
-                    "DISABLED (INTERNAL)"
-                } else {
-                    "DISABLED"
-                }
+                if self.internal { "DISABLED (INTERNAL)" } else { "DISABLED" }
             } else {
                 "(INTERNAL)"
             };
@@ -190,13 +186,11 @@ impl ListCmd {
 
     pub async fn get_zones(&self) -> Result<Option<ZoneList>, TdnsError> {
         let host = self.config.get_host();
-        let url = format!(
-            "{host}{API_LIST_ZONES_PATH}?token={}",
-            self.config.get_token()
-        );
+        let url = format!("{host}{API_LIST_ZONES_PATH}");
         println!("Requesting zones from URL: {}", url);
 
-        let body = match self.client.get_body(&url).await {
+        let query_params = QueryBuilder::from([("token", self.config.get_token())]);
+        let body = match self.client.get_body(&url, &Some(query_params)).await {
             Ok(body) => body,
             Err(error) => {
                 return Err(self.make_http_error(error));
@@ -256,10 +250,7 @@ impl ListCmd {
 
                     for zone in zone_list.zones {
                         let mut zone_table = zone.to_table();
-                        match self
-                            .table_style
-                            .output_table(&mut zone_table, &output_target)
-                        {
+                        match self.table_style.output_table(&mut zone_table, &output_target) {
                             Ok(()) => {}
                             Err(error) => {
                                 return Err(self.make_output_error(error));
@@ -303,7 +294,7 @@ mod tests {
     #[tokio::test]
     async fn get_one_zone() {
         let mut mock_client = crate::client::MockTdnsClient::new();
-        mock_client.expect_get_body().returning(|_| {
+        mock_client.expect_get_body().returning(|_, _| {
             Ok(r#"{
                 "response": {
                     "zones": [
@@ -326,16 +317,12 @@ mod tests {
 
         // Create a config file
         let mut mock_cfg_mgr = config::MockConfigManager::new();
-        mock_cfg_mgr
-            .expect_read_config_file()
-            .returning(|_| Ok(config::Config::new(HOST, TOKEN)));
+        mock_cfg_mgr.expect_read_config_file().returning(|_| Ok(config::Config::new(HOST, TOKEN)));
 
         let app_config = config::ApplicationConfig {
             config_manager: Box::new(mock_cfg_mgr),
             tdns_client: Rc::new(mock_client),
-            output: config::OutputTarget::IoWrite {
-                writer: Rc::new(RefCell::new(Vec::new())),
-            },
+            output: config::OutputTarget::IoWrite { writer: Rc::new(RefCell::new(Vec::new())) },
         };
 
         let list_cmd = ListCmd::create(
@@ -359,7 +346,7 @@ mod tests {
     #[tokio::test]
     async fn get_two_zones_sorted_alphabetically() {
         let mut mock_client = crate::client::MockTdnsClient::new();
-        mock_client.expect_get_body().returning(|_| {
+        mock_client.expect_get_body().returning(|_, _| {
             Ok(r#"{
                 "response": {
                     "zones": [
@@ -392,17 +379,13 @@ mod tests {
 
         // Create a config file
         let mut mock_cfg_mgr = config::MockConfigManager::new();
-        mock_cfg_mgr
-            .expect_read_config_file()
-            .returning(|_| Ok(config::Config::new(HOST, TOKEN)));
+        mock_cfg_mgr.expect_read_config_file().returning(|_| Ok(config::Config::new(HOST, TOKEN)));
 
         let writer = Rc::new(RefCell::new(Vec::<u8>::new()));
         let app_config = config::ApplicationConfig {
             config_manager: Box::new(mock_cfg_mgr),
             tdns_client: Rc::new(mock_client),
-            output: config::OutputTarget::IoWrite {
-                writer: writer.clone(),
-            },
+            output: config::OutputTarget::IoWrite { writer: writer.clone() },
         };
 
         let list_cmd = ListCmd::create(
@@ -420,9 +403,6 @@ mod tests {
         assert_eq!(zones.zones[0].name, "0.in-addr.arpa");
         assert_eq!(zones.zones[1].name, "example.com");
 
-        println!(
-            "Output:\n{}",
-            String::from_utf8(writer.borrow().clone()).unwrap()
-        );
+        println!("Output:\n{}", String::from_utf8(writer.borrow().clone()).unwrap());
     }
 }

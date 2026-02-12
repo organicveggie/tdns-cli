@@ -16,6 +16,7 @@ async fn test_two_zones_sorted() {
     // Create mock response for the /api/zones/list endpoint
     let mock = server
         .mock("GET", tdns::zones::API_LIST_ZONES_PATH)
+        // .match_query(mockito::Matcher::Any)
         .match_query(format!("token={}", TOKEN).as_str())
         .with_status(200)
         .with_header("Content-Type", "application/json")

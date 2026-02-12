@@ -1,5 +1,6 @@
 use clap::Subcommand;
 use serde::Deserialize;
+use std::collections::BTreeMap;
 
 use crate::client::QueryBuilder;
 use crate::{config, errors};
@@ -123,13 +124,13 @@ impl RecordTypeCommand {
         };
 
         let domain_name = make_domain_name(&domain, &zone);
-        let query =
+        let query_params =
             self.make_query_params(&cfg, &domain_name, &zone, overwrite, comments, ttl, expiry_ttl);
 
         let host = cfg.get_host();
-        let url = format!("{host}/api/zones/records/add?{}", query);
+        let url = format!("{host}/api/zones/records/add");
 
-        let body = match app_config.tdns_client.get_body(&url).await {
+        let body = match app_config.tdns_client.get_body(&url, &Some(query_params)).await {
             Ok(b) => b,
             Err(error) => {
                 return Err(errors::make_http_error(CMD_NAME, host, error));
@@ -160,7 +161,7 @@ impl RecordTypeCommand {
         comments: Option<String>,
         ttl: Option<u32>,
         expiry_ttl: Option<u32>,
-    ) -> String {
+    ) -> QueryBuilder {
         let mut qb = QueryBuilder::new()
             .add_param("token", &cfg.get_token())
             .add_param("domain", &domain_name)
@@ -182,7 +183,7 @@ impl RecordTypeCommand {
 
         let extra_params = self.make_record_type_params();
         qb = qb.merge(extra_params);
-        qb.build()
+        qb
     }
 
     fn make_record_type_params(&self) -> QueryBuilder {
@@ -233,6 +234,8 @@ fn make_domain_name(domain: &str, zone: &str) -> String {
 
     if domain.ends_with('.') {
         format!("{}{}", domain, zone)
+    } else if domain.is_empty() {
+        zone.to_string()
     } else {
         format!("{}.{}", domain, zone)
     }
@@ -264,6 +267,7 @@ mod tests {
     #[test]
     fn make_domain_name_test() {
         let cases = vec![
+            ("", "example.com", "example.com"),
             ("www", "example.com", "www.example.com"),
             ("www.example.com", "example.com", "www.example.com"),
             ("www.", "example.com", "www.example.com"),
@@ -279,57 +283,57 @@ mod tests {
     fn make_address_params_test() {
         #[rustfmt::skip]
         let cases = vec![
-            ("1.2.3.4", false, false, false, "address=1.2.3.4"),
-            ("2.3.4.5", true, false, false, "address=2.3.4.5&ptr=true"),
-            ("3.4.5.6", false, true, false, "address=3.4.5.6&ptrZone=true"),
-            ("4.5.6.7", true, true, false, "address=4.5.6.7&ptr=true&ptrZone=true"),
-            ("5.6.7.8", false, false, true, "address=5.6.7.8&updateSvcbHints=true"),
-            ("6.7.8.9", true, false, true, "address=6.7.8.9&ptr=true&updateSvcbHints=true"),
-            ("7.8.9.0", false, true, true, "address=7.8.9.0&ptrZone=true&updateSvcbHints=true"),
-            ("8.9.0.1", true, true, true, "address=8.9.0.1&ptr=true&ptrZone=true&updateSvcbHints=true"),
+            ("1.2.3.4", false, false, false, QueryBuilder::from([("address", "1.2.3.4")])),
+            ("2.3.4.5", true, false, false, QueryBuilder::from([("address", "2.3.4.5"), ("ptr", "true")])),
+            ("3.4.5.6", false, true, false, QueryBuilder::from([("address", "3.4.5.6"), ("ptrZone", "true")])),
+            ("4.5.6.7", true, true, false, QueryBuilder::from([("address", "4.5.6.7"), ("ptr", "true"), ("ptrZone", "true")])),
+            ("5.6.7.8", false, false, true, QueryBuilder::from([("address", "5.6.7.8"), ("updateSvcbHints", "true")])),
+            ("6.7.8.9", true, false, true, QueryBuilder::from([("address", "6.7.8.9"), ("ptr", "true"), ("updateSvcbHints", "true")])),
+            ("7.8.9.0", false, true, true, QueryBuilder::from([("address", "7.8.9.0"), ("ptrZone", "true"), ("updateSvcbHints", "true")])),
+            ("8.9.0.1", true, true, true, QueryBuilder::from([("address", "8.9.0.1"), ("ptr", "true"), ("ptrZone", "true"), ("updateSvcbHints", "true")])),
             
         ];
         for (address, ptr, ptr_zone, update_svcb_hints, expected) in cases {
-            assert_eq!(
-                make_address_params(address, ptr, ptr_zone, update_svcb_hints).build(),
-                expected
-            );
+            assert_eq!(make_address_params(address, ptr, ptr_zone, update_svcb_hints), expected);
         }
     }
 
     #[test]
     fn make_query_params_test() {
-        let cfg = config::Config::new("host1", "token1");
+        const TOKEN: &str = "token1";
+        let cfg = config::Config::new("host1", TOKEN);
         let zone = "example.com";
 
         let cases = vec![
             (
                 "www",
                 RecordTypeCommand::CNAME { cname: "cname.example.com".to_string() },
-                "cname=cname.example.com&domain=www.example.com&token=token1&type=CNAME&zone=example.com",
+                QueryBuilder::from([
+                    ("token", TOKEN),
+                    ("cname", "cname.example.com"),
+                    ("domain", "www.example.com"),
+                    ("type", "CNAME"),
+                    ("zone", zone),
+                ]),
             ),
             (
                 "",
                 RecordTypeCommand::TXT { text: "some text".to_string(), split_text: false },
-                "domain=example.com&token=token1&text=some text&type=TXT&zone=example.com",
+                QueryBuilder::from([
+                    ("token", TOKEN),
+                    ("text", "some text"),
+                    ("domain", "example.com"),
+                    ("type", "TXT"),
+                    ("zone", zone),
+                ]),
             ),
         ];
         for (domain, record_cmd, expected) in cases {
             let domain_name = make_domain_name(domain, zone);
             let query =
                 record_cmd.make_query_params(&cfg, &domain_name, zone, false, None, None, None);
+
             assert_eq!(query, expected);
         }
-
-        //     fn make_query_params(
-        //     &self,
-        //     cfg: &config::Config,
-        //     domain_name: &str,
-        //     zone: &str,
-        //     overwrite: bool,
-        //     comments: Option<String>,
-        //     ttl: Option<u32>,
-        //     expiry_ttl: Option<u32>,
-        // ) -> String {
     }
 }
