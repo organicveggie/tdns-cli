@@ -1,12 +1,13 @@
 use clap::Subcommand;
 
+use crate::config;
 use crate::errors::{self, TdnsError};
 use crate::tables::TableStyles;
 
+pub mod add;
 pub mod enums;
 pub mod helpers;
 
-mod add;
 mod get_records;
 mod records;
 
@@ -74,18 +75,17 @@ the record’s last modified time."
 }
 
 impl Command {
-    pub async fn run(&self, config_file_name: &str, zone: String) -> Result<(), errors::TdnsError> {
+    pub async fn run(
+        &self,
+        app_config: &config::ApplicationConfig,
+        config_file_name: &str,
+        zone: String,
+    ) -> Result<(), errors::TdnsError> {
         match self {
-            Command::Add {
-                domain,
-                ttl,
-                overwrite,
-                comments,
-                expiry_ttl,
-                add_command,
-            } => {
+            Command::Add { domain, ttl, overwrite, comments, expiry_ttl, add_command } => {
                 return add_command
                     .run(
+                        app_config,
                         config_file_name,
                         zone,
                         domain.clone(),
@@ -103,11 +103,7 @@ impl Command {
             Command::Enable => {
                 println!("enable {:?}", zone);
             }
-            Command::List {
-                domain,
-                detail,
-                table_style,
-            } => {
+            Command::List { domain, detail, table_style } => {
                 if let Some(domain_name) = domain {
                     println!("list records for {:?} in {:?}", domain_name, zone);
                 } else {

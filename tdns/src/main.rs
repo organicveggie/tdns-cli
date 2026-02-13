@@ -1,19 +1,12 @@
-use clap::{Parser, Subcommand};
-use std::error::Error;
+use std::rc::Rc;
 
-use crate::tables::TableStyles;
-
-pub mod config;
-pub mod errors;
-pub mod tables;
-pub mod zone;
-pub mod zones;
+use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(name = "tdns-cli")]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
-struct Cli {
+pub struct Cli {
     #[arg(
         short,
         long,
@@ -24,95 +17,23 @@ struct Cli {
     config_file: String,
 
     #[command(subcommand)]
-    command: Command,
-}
-
-#[derive(Subcommand, Debug)]
-enum Command {
-    #[command(about = "Initialize config file")]
-    Init {
-        #[arg(
-            short,
-            long,
-            default_value_t = false,
-            help = "Force overwriting existing config file"
-        )]
-        force: bool,
-    },
-    #[command(about = "List all zones")]
-    List {
-        #[arg(
-            short = 'o',
-            long = "sort",
-            help = "Sort zones in ascending alphabetically"
-        )]
-        sort_asc: Option<bool>,
-        #[arg(
-            value_enum,
-            long = "table_style",
-            help = "Table style to use when printing zone records",
-            default_value_t = TableStyles::Ascii,
-        )]
-        table_style: TableStyles,
-    },
-    #[command(about = "Perform actions on a specific zone")]
-    Zone {
-        #[arg(help = "Domain name of the zone")]
-        zone: String,
-        #[command(subcommand)]
-        zone_command: zone::Command,
-    },
+    command: tdns::Command,
 }
 
 #[tokio::main]
 async fn main() {
+    let config_manager = tdns::config::ConfigFileManager;
+    let http_client = match tdns::client::TdnsHttpClient::new() {
+        Ok(c) => c,
+        Err(error) => panic!("Error creating HTTP client: {}", error),
+    };
+
+    let app_config = tdns::config::ApplicationConfig {
+        config_manager: Box::new(config_manager),
+        tdns_client: Rc::new(http_client),
+        output: tdns::config::OutputTarget::stdout(),
+    };
+
     let cli = Cli::parse();
-
-    match &cli.command {
-        Command::Init { force } => {
-            println!("Init: force = {:?}", force);
-            match config::create_config_file(&cli.config_file, force) {
-                Ok(()) => {}
-                Err(error) => {
-                    println!("Error creating config file: {:?}", error);
-                    return;
-                }
-            }
-            println!("Created config file");
-        }
-        Command::List {
-            sort_asc,
-            table_style,
-        } => {
-            let sort_mode = zones::ZoneSortMode::from_option(sort_asc);
-            let cmd = match zones::ListCmd::create(&cli.config_file, sort_mode, table_style.clone())
-            {
-                Ok(cmd) => cmd,
-                Err(error) => panic!("failed to list zones: {}", error),
-            };
-            match cmd.execute().await {
-                Ok(()) => {}
-                Err(error) => {
-                    print_tdns_error(&error);
-                }
-            }
-        }
-        Command::Zone { zone, zone_command } => {
-            match zone::Command::run(&zone_command, &cli.config_file, zone.clone()).await {
-                Ok(()) => {}
-                Err(error) => {
-                    print_tdns_error(&error);
-                }
-            }
-        }
-    }
-}
-
-fn print_tdns_error(error: &errors::TdnsError) {
-    eprintln!("Error: {}", error);
-    let mut source: Option<&(dyn Error + 'static)> = error.source();
-    while let Some(cause) = source {
-        eprintln!("Caused by: {}", cause);
-        source = cause.source();
-    }
+    tdns::run_cli(&app_config, &cli.config_file, &cli.command).await;
 }

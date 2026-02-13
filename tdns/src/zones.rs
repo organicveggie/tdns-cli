@@ -1,15 +1,19 @@
-use reqwest::Client;
+use mockall::predicate::*;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::rc::Rc;
 use tabled::Table;
 use tabled::builder::Builder;
 use tabled::settings::Panel;
 
+use crate::cli;
+use crate::client::{QueryBuilder, TdnsClient};
 use crate::config;
 use crate::errors::{TdnsError, TdnsErrorGenerator};
 use crate::tables::TableStyles;
 
 const CMD_NAME: &str = "List Zones";
+pub const API_LIST_ZONES_PATH: &str = "/api/zones/list";
 
 pub enum ZoneSortMode {
     Unsorted,
@@ -28,6 +32,14 @@ impl ZoneSortMode {
                 }
             }
             _ => ZoneSortMode::Unsorted,
+        }
+    }
+
+    pub fn from_sort_order(sort_order: &cli::SortOrder) -> ZoneSortMode {
+        match sort_order {
+            cli::SortOrder::Unsorted => ZoneSortMode::Unsorted,
+            cli::SortOrder::Ascending => ZoneSortMode::AlphabeticalAscending,
+            cli::SortOrder::Descending => ZoneSortMode::AlphabeticalDescending,
         }
     }
 }
@@ -80,11 +92,7 @@ impl Zone {
         let mut b = Builder::with_capacity(5, 2);
         if self.disabled || self.internal {
             let status = if self.disabled {
-                if self.internal {
-                    "DISABLED (INTERNAL)"
-                } else {
-                    "DISABLED"
-                }
+                if self.internal { "DISABLED (INTERNAL)" } else { "DISABLED" }
             } else {
                 "(INTERNAL)"
             };
@@ -151,54 +159,48 @@ impl fmt::Display for Zone {
 }
 
 pub struct ListCmd {
+    client: Rc<dyn TdnsClient>,
     config: config::Config,
+    output_format: cli::OutputFormat,
     sort: ZoneSortMode,
     table_style: TableStyles,
 }
 
 impl ListCmd {
     pub fn create(
+        app_config: &config::ApplicationConfig,
         config_file: &str,
+        output_format: &cli::OutputFormat,
         sort: ZoneSortMode,
         table_style: TableStyles,
     ) -> Result<ListCmd, config::ConfigFileError> {
-        let cfg = config::read_config_file(config_file)?;
+        let cfg = app_config.config_manager.read_config_file(config_file)?;
         Ok(ListCmd {
+            client: Rc::clone(&app_config.tdns_client),
             config: cfg,
+            output_format: *output_format,
             sort: sort,
             table_style: table_style,
         })
     }
 
-    pub async fn execute(&self) -> Result<(), TdnsError> {
-        let client = match Client::builder().danger_accept_invalid_certs(true).build() {
-            Ok(c) => c,
-            Err(error) => {
-                return self.make_http_err(error);
-            }
-        };
-
+    pub async fn get_zones(&self) -> Result<Option<ZoneList>, TdnsError> {
         let host = self.config.get_host();
-        let base_url = format!("{host}/api/zones/list?token={}", self.config.get_token());
+        let url = format!("{host}{API_LIST_ZONES_PATH}");
+        println!("Requesting zones from URL: {}", url);
 
-        let http_resp = match client.get(base_url).send().await {
-            Ok(resp) => resp,
-            Err(error) => {
-                return self.make_http_err(error);
-            }
-        };
-
-        let body = match http_resp.text().await {
+        let query_params = QueryBuilder::from([("token", self.config.get_token())]);
+        let body = match self.client.get_body(&url, &Some(query_params)).await {
             Ok(body) => body,
             Err(error) => {
-                return self.make_http_err(error);
+                return Err(self.make_http_error(error));
             }
         };
 
         let resp: ListZonesResponse = match serde_json::from_str(&body) {
             Ok(r) => r,
             Err(error) => {
-                return self.make_json_err(error);
+                return Err(self.make_json_error(error));
             }
         };
 
@@ -213,13 +215,57 @@ impl ListCmd {
                 }
                 _ => (),
             }
+            Ok(Some(zone_list))
+        } else {
+            Ok(None)
+        }
+    }
 
-            // let table_style = Style::ascii_rounded()
-            //     .horizontals([(1, HorizontalLine::inherit(Style::ascii()).horizontal('-'))]);
+    pub async fn execute(&self, output_target: config::OutputTarget) -> Result<(), TdnsError> {
+        let zones = self.get_zones().await?;
+        if let Some(zone_list) = zones {
+            if zone_list.zones.is_empty() {
+                println!("No zones found");
+                return Ok(());
+            }
+            match self.output_format {
+                cli::OutputFormat::Json => {
+                    let json = match serde_json::to_string_pretty(&zone_list) {
+                        Ok(j) => j,
+                        Err(error) => {
+                            return Err(self.make_json_error(error));
+                        }
+                    };
+                    match output_target.writeln(&json) {
+                        Ok(()) => {}
+                        Err(error) => {
+                            return Err(self.make_output_error(error));
+                        }
+                    }
+                    // println!("{}", json);
+                }
+                cli::OutputFormat::Table => {
+                    // let table_style = Style::ascii_rounded()
+                    //     .horizontals([(1, HorizontalLine::inherit(Style::ascii()).horizontal('-'))]);
 
-            for zone in zone_list.zones {
-                let mut zone_table = zone.to_table();
-                self.table_style.print_table(&mut zone_table);
+                    for zone in zone_list.zones {
+                        let mut zone_table = zone.to_table();
+                        match self.table_style.output_table(&mut zone_table, &output_target) {
+                            Ok(()) => {}
+                            Err(error) => {
+                                return Err(self.make_output_error(error));
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // println!("No zones found");
+            match output_target.writeln("No zones found") {
+                Ok(()) => {}
+                Err(error) => {
+                    return Err(self.make_output_error(error));
+                }
             }
         }
 
@@ -233,5 +279,130 @@ impl TdnsErrorGenerator for ListCmd {
     }
     fn get_host(&self) -> &str {
         self.config.get_host()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::RefCell;
+
+    use super::*;
+
+    const TOKEN: &str = "test-token";
+    const HOST: &str = "test-host.example.com";
+
+    #[tokio::test]
+    async fn get_one_zone() {
+        let mut mock_client = crate::client::MockTdnsClient::new();
+        mock_client.expect_get_body().returning(|_, _| {
+            Ok(r#"{
+                "response": {
+                    "zones": [
+                        {
+                            "name": "example.com",
+                            "type": "Primary",
+                            "internal": false,
+                            "dnssecStatus": "Secure",
+                            "soaSerial": 123456,
+                            "lastModified": "2022-02-26T07:57:08.1842183Z",
+                            "disabled": false
+                        }
+                    ]
+                },
+                "server": "ns.example.com",
+                "status": "success"
+            }"#
+            .to_string())
+        });
+
+        // Create a config file
+        let mut mock_cfg_mgr = config::MockConfigManager::new();
+        mock_cfg_mgr.expect_read_config_file().returning(|_| Ok(config::Config::new(HOST, TOKEN)));
+
+        let app_config = config::ApplicationConfig {
+            config_manager: Box::new(mock_cfg_mgr),
+            tdns_client: Rc::new(mock_client),
+            output: config::OutputTarget::IoWrite { writer: Rc::new(RefCell::new(Vec::new())) },
+        };
+
+        let list_cmd = ListCmd::create(
+            &app_config,
+            "config.json",
+            &cli::OutputFormat::Table,
+            ZoneSortMode::Unsorted,
+            TableStyles::Ascii,
+        )
+        .unwrap();
+
+        let zones = list_cmd.get_zones().await.unwrap().unwrap();
+        assert_eq!(zones.zones.len(), 1);
+
+        let zone = &zones.zones[0];
+        assert_eq!(zone.name, "example.com");
+        assert_eq!(zone.zone_type, "Primary");
+        assert_eq!(zone.internal, false);
+    }
+
+    #[tokio::test]
+    async fn get_two_zones_sorted_alphabetically() {
+        let mut mock_client = crate::client::MockTdnsClient::new();
+        mock_client.expect_get_body().returning(|_, _| {
+            Ok(r#"{
+                "response": {
+                    "zones": [
+                        {
+                            "name": "example.com",
+                            "type": "Primary",
+                            "internal": false,
+                            "dnssecStatus": "Secure",
+                            "soaSerial": 123456,
+                            "lastModified": "2025-02-26T07:57:08.1842183Z",
+                            "disabled": false
+                        },
+                        {
+                            "name": "0.in-addr.arpa",
+                            "type": "Primary",
+                            "lastModified": "2026-01-14T07:47:55.3604008Z",
+                            "disabled": false,
+                            "soaSerial": 1,
+                            "internal": true,
+                            "dnssecStatus": "Unsigned",
+                            "hasDnssecPrivateKeys": false
+                        }
+                    ]
+                },
+                "server": "ns.example.com",
+                "status": "success"
+            }"#
+            .to_string())
+        });
+
+        // Create a config file
+        let mut mock_cfg_mgr = config::MockConfigManager::new();
+        mock_cfg_mgr.expect_read_config_file().returning(|_| Ok(config::Config::new(HOST, TOKEN)));
+
+        let writer = Rc::new(RefCell::new(Vec::<u8>::new()));
+        let app_config = config::ApplicationConfig {
+            config_manager: Box::new(mock_cfg_mgr),
+            tdns_client: Rc::new(mock_client),
+            output: config::OutputTarget::IoWrite { writer: writer.clone() },
+        };
+
+        let list_cmd = ListCmd::create(
+            &app_config,
+            "config.json",
+            &cli::OutputFormat::Table,
+            ZoneSortMode::AlphabeticalAscending,
+            TableStyles::Ascii,
+        )
+        .unwrap();
+
+        let zones = list_cmd.get_zones().await.unwrap().unwrap();
+        assert_eq!(zones.zones.len(), 2);
+
+        assert_eq!(zones.zones[0].name, "0.in-addr.arpa");
+        assert_eq!(zones.zones[1].name, "example.com");
+
+        println!("Output:\n{}", String::from_utf8(writer.borrow().clone()).unwrap());
     }
 }
