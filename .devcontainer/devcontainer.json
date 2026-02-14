@@ -3,7 +3,11 @@
 {
     "name": "Rust",
     // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-    "image": "mcr.microsoft.com/devcontainers/rust:latest",
+    // "image": "mcr.microsoft.com/devcontainers/rust:latest",
+    // "image": "rust:latest",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
     // Configure tool-specific properties.
     "customizations": {
         // Configure properties specific to VS Code.
