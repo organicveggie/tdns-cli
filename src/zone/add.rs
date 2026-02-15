@@ -1,5 +1,7 @@
 use clap::Subcommand;
 use serde::Deserialize;
+
+#[allow(unused_imports)]
 use std::collections::BTreeMap;
 
 use crate::client::QueryBuilder;
