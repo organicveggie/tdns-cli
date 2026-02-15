@@ -55,6 +55,7 @@ pub enum Command {
     Zone {
         #[arg(help = "Domain name of the zone")]
         zone: String,
+
         #[command(subcommand)]
         zone_command: zone::Command,
     },
