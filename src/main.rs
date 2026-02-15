@@ -16,14 +16,24 @@ pub struct Cli {
     )]
     config_file: String,
 
+    #[arg(
+        long,
+        global = true,
+        default_value_t = false,
+        help = "Allow invalid TLS certificates when connecting to the TDNS server"
+    )]
+    allow_invalid_certificates: bool,
+
     #[command(subcommand)]
     command: tdns::Command,
 }
 
 #[tokio::main]
 async fn main() {
+    let cli = Cli::parse();
+
     let config_manager = tdns::config::ConfigFileManager;
-    let http_client = match tdns::client::TdnsHttpClient::new() {
+    let http_client = match tdns::client::TdnsHttpClient::new(cli.allow_invalid_certificates) {
         Ok(c) => c,
         Err(error) => panic!("Error creating HTTP client: {}", error),
     };
@@ -34,6 +44,5 @@ async fn main() {
         output: tdns::config::OutputTarget::stdout(),
     };
 
-    let cli = Cli::parse();
     tdns::run_cli(&app_config, &cli.config_file, &cli.command).await;
 }

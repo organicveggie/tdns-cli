@@ -24,8 +24,12 @@ pub struct TdnsHttpClient {
 }
 
 impl TdnsHttpClient {
-    pub fn new() -> Result<TdnsHttpClient, reqwest::Error> {
-        let client = reqwest::Client::builder().danger_accept_invalid_certs(true).build()?;
+    pub fn new(ignore_invalid_certs: bool) -> Result<TdnsHttpClient, reqwest::Error> {
+        let mut builder = reqwest::Client::builder();
+        if ignore_invalid_certs {
+            builder = builder.tls_danger_accept_invalid_certs(true);
+        }
+        let client = builder.build()?;
         Ok(TdnsHttpClient { client })
     }
 }
