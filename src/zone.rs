@@ -5,6 +5,7 @@ use crate::errors::{self, TdnsError};
 use crate::tables::TableStyles;
 
 pub mod add;
+pub mod enable;
 pub mod enums;
 pub mod helpers;
 
@@ -98,10 +99,11 @@ impl Command {
             }
 
             Command::Disable => {
-                println!("disable {:?}", zone);
+                return enable::run(app_config, config_file_name, zone, enable::Mode::Disable)
+                    .await;
             }
             Command::Enable => {
-                println!("enable {:?}", zone);
+                return enable::run(app_config, config_file_name, zone, enable::Mode::Enable).await;
             }
             Command::List { domain, detail, table_style } => {
                 if let Some(domain_name) = domain {
@@ -127,6 +129,5 @@ impl Command {
                 return cmd.execute().await;
             }
         }
-        return Ok(());
     }
 }
