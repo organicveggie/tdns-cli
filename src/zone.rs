@@ -7,9 +7,9 @@ use crate::tables::TableStyles;
 pub mod add;
 pub mod enable;
 pub mod enums;
+pub mod get_records;
 pub mod helpers;
 
-mod get_records;
 mod records;
 
 #[derive(Subcommand, Debug)]
