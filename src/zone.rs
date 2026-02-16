@@ -1,15 +1,15 @@
 use clap::Subcommand;
 
 use crate::config;
-use crate::errors::{self, TdnsError};
+use crate::errors;
 use crate::tables::TableStyles;
 
 pub mod add;
 pub mod enable;
 pub mod enums;
+pub mod get_records;
 pub mod helpers;
 
-mod get_records;
 mod records;
 
 #[derive(Subcommand, Debug)]
@@ -111,22 +111,13 @@ impl Command {
                 } else {
                     println!("list records for {:?}", zone);
                 }
-                let cmd = match get_records::GetRecordsCmd::create(
-                    config_file_name,
+                let cmd = get_records::GetRecordsCmd::create(
                     zone.clone(),
                     domain.clone(),
                     detail.clone(),
                     table_style.clone(),
-                ) {
-                    Ok(cmd) => cmd,
-                    Err(error) => {
-                        return Err(TdnsError::ConfigFileError {
-                            command: get_records::CMD_NAME.to_string(),
-                            source: error,
-                        });
-                    }
-                };
-                return cmd.execute().await;
+                );
+                return cmd.execute(config_file_name, app_config).await;
             }
         }
     }

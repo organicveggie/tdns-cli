@@ -1,14 +1,15 @@
-use reqwest::Client;
 use tabled::builder::Builder;
 use tabled::settings::Panel;
 
-use crate::config;
-use crate::errors::{TdnsError, TdnsErrorGenerator};
+use crate::client::QueryBuilder;
+use crate::errors::TdnsError;
 use crate::tables::TableStyles;
 use crate::zone;
 use crate::zone::records;
+use crate::{config, errors};
 
 pub const CMD_NAME: &str = "Get Zone Records";
+pub const API_GET_RECORDS_PATH: &str = "/api/zones/records/get";
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, clap::ValueEnum)]
 pub enum ZoneRecordDetailLevel {
@@ -17,7 +18,6 @@ pub enum ZoneRecordDetailLevel {
 }
 
 pub struct GetRecordsCmd {
-    config: config::Config,
     zone: String,
     domain: Option<String>,
     detail: ZoneRecordDetailLevel,
@@ -26,58 +26,52 @@ pub struct GetRecordsCmd {
 
 impl GetRecordsCmd {
     pub fn create(
-        config_file: &str,
         zone_name: String,
         domain_name: Option<String>,
         detail: ZoneRecordDetailLevel,
         table_style: TableStyles,
-    ) -> Result<GetRecordsCmd, config::ConfigFileError> {
-        let cfg = config::read_config_file(config_file)?;
-        Ok(GetRecordsCmd {
-            config: cfg,
+    ) -> GetRecordsCmd {
+        GetRecordsCmd {
             zone: zone_name,
             domain: domain_name,
             detail: detail,
             table_style: table_style,
-        })
+        }
     }
 
-    pub async fn execute(&self) -> Result<(), TdnsError> {
-        let client = match Client::builder().danger_accept_invalid_certs(true).build() {
+    pub async fn execute(
+        &self,
+        config_file: &str,
+        app_config: &config::ApplicationConfig,
+    ) -> Result<(), TdnsError> {
+        let cfg = match app_config.config_manager.read_config_file(config_file) {
             Ok(c) => c,
             Err(error) => {
-                return self.make_http_err(error);
+                return Err(errors::make_config_error(CMD_NAME, error));
             }
         };
 
-        let host = self.config.get_host();
-        let mut url = format!(
-            "{host}/api/zones/records/get?token={}&domain={}",
-            self.config.get_token(),
-            zone::helpers::get_target_domain(&self.zone, &self.domain)
-        );
+        let mut query_params = QueryBuilder::new()
+            .add_param("token", cfg.get_token())
+            .add_param("domain", &zone::helpers::get_target_domain(&self.zone, &self.domain));
         if self.domain.is_none() {
-            url = format!("{}&listZone=true", url);
+            query_params = query_params.add_param("listZone", "true");
         }
 
-        let http_resp = match client.get(url).send().await {
-            Ok(resp) => resp,
-            Err(error) => {
-                return self.make_http_err(error);
-            }
-        };
+        let host = cfg.get_host();
+        let url = format!("{host}{API_GET_RECORDS_PATH}");
 
-        let body = match http_resp.text().await {
+        let body = match app_config.tdns_client.get_body(&url, &Some(query_params)).await {
             Ok(body) => body,
             Err(error) => {
-                return self.make_http_err(error);
+                return Err(errors::make_http_error(CMD_NAME, host, error));
             }
         };
 
         let resp: records::ListZoneRecordsResponse = match serde_json::from_str(&body) {
             Ok(r) => r,
             Err(error) => {
-                return self.make_json_err(error);
+                return Err(errors::make_json_error(CMD_NAME, error));
             }
         };
 
@@ -91,11 +85,7 @@ impl GetRecordsCmd {
             let mut b = Builder::with_capacity(resp.records.records.len(), 3);
             b.push_record(["Record", "Type", "Value"]);
             for record in resp.records.records {
-                b.push_record([
-                    record.name,
-                    record.data.to_string(),
-                    record.data.value_summary(),
-                ]);
+                b.push_record([record.name, record.data.to_string(), record.data.value_summary()]);
             }
             let mut table = b.build();
             // table.with(table_style.clone());
@@ -110,14 +100,5 @@ impl GetRecordsCmd {
         }
 
         Ok(())
-    }
-}
-
-impl TdnsErrorGenerator for GetRecordsCmd {
-    fn get_command_name(&self) -> &str {
-        CMD_NAME
-    }
-    fn get_host(&self) -> &str {
-        self.config.get_host()
     }
 }
