@@ -88,7 +88,7 @@ async fn test_get_all_zone_records() {
         .returning(move |_| Ok(config::Config::new(&url.clone(), TOKEN)));
 
     // Create a TdnsClient that points to the mock server
-    let client = tdns::client::TdnsHttpClient::new(true).unwrap();
+    let client = tdns::client::TdnsHttpClient::new().unwrap();
 
     let cli_command = tdns::Command::Zone {
         zone: ZONE.to_string(),
@@ -137,7 +137,7 @@ async fn test_get_one_zone_record() {
         .returning(move |_| Ok(config::Config::new(&url.clone(), TOKEN)));
 
     // Create a TdnsClient that points to the mock server
-    let client = tdns::client::TdnsHttpClient::new(true).unwrap();
+    let client = tdns::client::TdnsHttpClient::new().unwrap();
 
     let cli_command = tdns::Command::Zone {
         zone: ZONE.to_string(),
