@@ -59,7 +59,7 @@ async fn test_two_zones_sorted() {
         .returning(move |_| Ok(config::Config::new(&url.clone(), TOKEN)));
 
     // Create a TdnsClient that points to the mock server
-    let client = tdns::client::TdnsHttpClient::new().unwrap();
+    let client = tdns::client::TdnsHttpClient::new(true).unwrap();
 
     let cli_command = tdns::Command::List {
         sort_order: tdns::cli::SortOrder::Ascending,
@@ -71,9 +71,7 @@ async fn test_two_zones_sorted() {
     let app_config = config::ApplicationConfig {
         config_manager: Box::new(mock_cfg_mgr),
         tdns_client: Rc::new(client),
-        output: config::OutputTarget::IoWrite {
-            writer: writer.clone(),
-        },
+        output: config::OutputTarget::IoWrite { writer: writer.clone() },
     };
 
     run_cli(&app_config, "test-config.json", &cli_command).await;

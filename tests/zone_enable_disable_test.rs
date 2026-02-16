@@ -51,7 +51,7 @@ async fn test_disable_zone() {
         .returning(move |_| Ok(config::Config::new(&url.clone(), TOKEN)));
 
     // Create a TdnsClient that points to the mock server
-    let client = tdns::client::TdnsHttpClient::new().unwrap();
+    let client = tdns::client::TdnsHttpClient::new(true).unwrap();
     let cli_command =
         tdns::Command::Zone { zone: ZONE.to_string(), zone_command: tdns::zone::Command::Disable };
 
@@ -84,7 +84,7 @@ async fn test_ensable_zone() {
         .returning(move |_| Ok(config::Config::new(&url.clone(), TOKEN)));
 
     // Create a TdnsClient that points to the mock server
-    let client = tdns::client::TdnsHttpClient::new().unwrap();
+    let client = tdns::client::TdnsHttpClient::new(true).unwrap();
     let cli_command =
         tdns::Command::Zone { zone: ZONE.to_string(), zone_command: tdns::zone::Command::Enable };
 
