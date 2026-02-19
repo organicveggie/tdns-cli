@@ -9,6 +9,7 @@ pub mod enable;
 pub mod enums;
 pub mod get_records;
 pub mod helpers;
+pub mod update;
 
 mod records;
 
@@ -73,6 +74,29 @@ the record’s last modified time."
         )]
         table_style: TableStyles,
     },
+
+    #[command(about = "Update a record in a zone")]
+    Update {
+        #[arg(help = "Domain name of the record to update")]
+        domain: String,
+
+        #[arg(long = "ttl", help = "TTL in seconds for the record to update")]
+        ttl: Option<u32>,
+
+        #[arg(long = "comments", help = "Comments for the record to update")]
+        comments: Option<String>,
+
+        #[arg(
+            long = "expiry-ttl",
+            help = "Expiry TTL in seconds for the record to update",
+            long_help = "Set to automatically delete the record when the value in seconds elapses since 
+the record’s last modified time."
+        )]
+        expiry_ttl: Option<u32>,
+
+        #[command(subcommand)]
+        update_command: update::RecordTypeCommand,
+    },
 }
 
 impl Command {
@@ -118,6 +142,19 @@ impl Command {
                     table_style.clone(),
                 );
                 return cmd.execute(config_file_name, app_config).await;
+            }
+            Command::Update { domain, ttl, comments, expiry_ttl, update_command } => {
+                return update_command
+                    .run(
+                        app_config,
+                        config_file_name,
+                        zone,
+                        domain.clone(),
+                        comments.clone(),
+                        ttl.clone(),
+                        expiry_ttl.clone(),
+                    )
+                    .await;
             }
         }
     }
