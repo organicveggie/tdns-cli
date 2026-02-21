@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use mockall::automock;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[automock]
@@ -65,7 +65,7 @@ impl TdnsClient for TdnsHttpClient {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(transparent)]
 pub struct QueryBuilder {
     params: BTreeMap<String, String>,
@@ -75,6 +75,16 @@ impl<K: Ord + std::fmt::Display, const N: usize> From<[(K, K); N]> for QueryBuil
     fn from(arr: [(K, K); N]) -> QueryBuilder {
         let mut params = BTreeMap::new();
         for (key, value) in arr.iter() {
+            params.insert(key.to_string(), value.to_string());
+        }
+        QueryBuilder { params }
+    }
+}
+
+impl<K: Ord + std::fmt::Display> From<Vec<(K, K)>> for QueryBuilder {
+    fn from(vec: Vec<(K, K)>) -> QueryBuilder {
+        let mut params = BTreeMap::new();
+        for (key, value) in vec.iter() {
             params.insert(key.to_string(), value.to_string());
         }
         QueryBuilder { params }

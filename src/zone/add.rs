@@ -1,11 +1,8 @@
 use clap::Subcommand;
 use serde::Deserialize;
 
-#[allow(unused_imports)]
-use std::collections::BTreeMap;
-
 use crate::client::QueryBuilder;
-use crate::{config, errors};
+use crate::{config, errors, zone::helpers};
 
 pub const CMD_NAME: &str = "Add Zone Record";
 pub const API_ADD_RECORD_PATH: &str = "/api/zones/records/add";
@@ -126,7 +123,7 @@ impl RecordTypeCommand {
             }
         };
 
-        let domain_name = make_domain_name(&domain, &zone);
+        let domain_name = helpers::make_domain_name(&domain, &zone);
         let query_params =
             self.make_query_params(&cfg, &domain_name, &zone, overwrite, comments, ttl, expiry_ttl);
 
@@ -230,20 +227,6 @@ impl RecordTypeCommand {
     }
 }
 
-fn make_domain_name(domain: &str, zone: &str) -> String {
-    if domain.ends_with(zone) {
-        return domain.to_string();
-    }
-
-    if domain.ends_with('.') {
-        format!("{}{}", domain, zone)
-    } else if domain.is_empty() {
-        zone.to_string()
-    } else {
-        format!("{}.{}", domain, zone)
-    }
-}
-
 fn make_address_params(
     address: &str,
     ptr: bool,
@@ -266,21 +249,6 @@ fn make_address_params(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn make_domain_name_test() {
-        let cases = vec![
-            ("", "example.com", "example.com"),
-            ("www", "example.com", "www.example.com"),
-            ("www.example.com", "example.com", "www.example.com"),
-            ("www.", "example.com", "www.example.com"),
-            ("www.sub", "example.com", "www.sub.example.com"),
-            ("www.sub.", "example.com", "www.sub.example.com"),
-        ];
-        for (domain, zone, expected) in cases {
-            assert_eq!(make_domain_name(domain, zone), expected);
-        }
-    }
 
     #[test]
     fn make_address_params_test() {
@@ -332,7 +300,7 @@ mod tests {
             ),
         ];
         for (domain, record_cmd, expected) in cases {
-            let domain_name = make_domain_name(domain, zone);
+            let domain_name = helpers::make_domain_name(domain, zone);
             let query =
                 record_cmd.make_query_params(&cfg, &domain_name, zone, false, None, None, None);
 

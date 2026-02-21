@@ -202,6 +202,14 @@ impl Config {
         }
     }
 
+    pub fn from_strings(host: String, token: String) -> Config {
+        let host_name = match host.strip_suffix("/") {
+            Some(h) => h.to_string(),
+            None => host,
+        };
+        Config { token: token.to_string(), host: host_name.to_string() }
+    }
+
     pub fn normalize(config: &Config) -> Config {
         Config::new(config.host.as_str(), config.token.as_str())
     }

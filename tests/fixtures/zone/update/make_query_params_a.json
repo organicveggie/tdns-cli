@@ -1,0 +1,18 @@
+{
+    "domain": "www",
+    "record_type_command": {
+        "A": {
+            "address": "1.2.3.4",
+            "ptr": null,
+            "ptr_zone": null,
+            "update_svcb_hints": null
+        }
+    },
+    "expected_params": {
+        "address": "1.2.3.4",
+        "domain": "www.example.com",
+        "token": "token1",
+        "type": "A",
+        "zone": "example.com"
+    }
+}
