@@ -1,0 +1,36 @@
+{
+    "name": "Update NS record",
+    "zone": "example.com",
+    "domain": "test.example.com",
+    "ttl": 3600,
+    "comments": "This is a comment for the NS record update.",
+    "expiry_ttl": 7200,
+    "command": {
+        "NS": {
+            "name_server": "ns.example.com"
+        }
+    },
+    "mock_response": {
+        "response": {
+            "zone": {
+                "name": "example.com",
+                "type": "Primary",
+                "internal": false,
+                "dnssecStatus": "SignedWithNSEC",
+                "disabled": false
+            },
+            "updatedRecord": {
+                "disabled": false,
+                "name": "test.example.com",
+                "type": "NS",
+                "ttl": 3600,
+                "rData": {
+                    "name_server": "ns.example.com"
+                },
+                "dnssecStatus": "Unknown",
+                "lastUsedOn": "0001-01-01T00:00:00"
+            }
+        },
+        "status": "ok"
+    }
+}
