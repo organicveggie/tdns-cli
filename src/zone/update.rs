@@ -70,6 +70,37 @@ pub enum RecordTypeCommand {
         #[arg(help = "PTR domain name")]
         ptr_name: String,
     },
+    SOA {
+        #[arg(short, long, help = "Primary name server for the SOA record")]
+        primary_ns: String,
+        #[arg(long, help = "Responsible person for the SOA record")]
+        responsible_person: String,
+        #[arg(short, long, help = "Serial number for the SOA record")]
+        serial: u32,
+        #[arg(
+            long,
+            help = "Time in seconds before a secondary server should check the SOA for changes"
+        )]
+        refresh: u32,
+        #[arg(
+            long,
+            help = "Time in seconds a secondary server should wait to retry a failed zone transfer"
+        )]
+        retry: u32,
+        #[arg(
+            short = 'x',
+            long,
+            help = "Time in seconds a secondary server will keep using cached data if the master is unreachable"
+        )]
+        expire: u32,
+        #[arg(short, long, help = "Minimum TTL for resource records in the zone")]
+        minimum: u32,
+        #[arg(
+            long,
+            help = "Set value to true to enable using date scheme for SOA serial. This optional parameter is used only with Primary, Forwarder, and Catalog zones."
+        )]
+        use_serial_date_scheme: bool,
+    },
     SRV,
     SSHFP,
     SVCB,
@@ -196,6 +227,26 @@ impl RecordTypeCommand {
             }
             RecordTypeCommand::PTR { ptr_name } => {
                 QueryBuilder::new().add_param("ptr_name", ptr_name)
+            }
+            RecordTypeCommand::SOA {
+                primary_ns,
+                responsible_person,
+                serial,
+                refresh,
+                retry,
+                expire,
+                minimum,
+                use_serial_date_scheme,
+            } => {
+                return QueryBuilder::new()
+                    .add_param("primaryNameServer", primary_ns)
+                    .add_param("responsiblePerson", responsible_person)
+                    .add_param("serial", &serial.to_string())
+                    .add_param("refresh", &refresh.to_string())
+                    .add_param("retry", &retry.to_string())
+                    .add_param("expire", &expire.to_string())
+                    .add_param("minimum", &minimum.to_string())
+                    .add_param("useSerialDateScheme", &use_serial_date_scheme.to_string());
             }
             RecordTypeCommand::TXT { text, split_text } => {
                 let mut qb = QueryBuilder::new();
