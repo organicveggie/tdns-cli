@@ -29,3 +29,6 @@ target/
 # Editor/IDE
 # .idea/
 .vscode/
+
+# Default config file
+~/.config/tdns-cli/config.json
