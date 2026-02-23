@@ -3,6 +3,8 @@ name = "tdns"
 version = "0.1.0"
 edition = "2024"
 repository = "https://github.com/organicveggie/tdns-cli"
+description = "CLI tool for Technitium DNS server."
+license = "GPL-3.0-or-later"
 
 [dependencies]
 async-trait = "0.1.89"
