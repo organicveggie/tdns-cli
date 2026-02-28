@@ -11,7 +11,7 @@ pub struct Cli {
         short,
         long,
         global = true,
-        default_value = "~/.config/tdns-cli/config.json",
+        default_value = "~/.config/tdns-cli/config.toml",
         help = "Full path to config file"
     )]
     config_file: String,
