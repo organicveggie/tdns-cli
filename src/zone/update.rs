@@ -330,14 +330,14 @@ mod tests {
 
     #[rstest]
     fn make_query_params_test(
-        #[files("tests/fixtures/zone/update/make_query_params_*.json")] path: PathBuf,
+        #[files("tests/fixtures/zone/update/make_query_params_*.toml")] path: PathBuf,
     ) {
         const TOKEN: &str = "token1";
         const ZONE: &str = "example.com";
         let cfg = config::Config::new("host1", TOKEN);
 
         let file_content = std::fs::read_to_string(path).unwrap();
-        let test_case: QueryParamsTestCase = serde_json::from_str(&file_content).unwrap();
+        let test_case: QueryParamsTestCase = toml::from_str(&file_content).unwrap();
         let extras = match test_case.extra_options.as_ref() {
             Some(options) => options,
             None => &QueryParamsExtraTestOptions { ttl: None, comments: None, expiry_ttl: None },

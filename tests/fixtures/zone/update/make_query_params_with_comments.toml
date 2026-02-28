@@ -1,0 +1,15 @@
+domain = "wcw"
+
+[record_type_command.A]
+address = "2.3.4.5"
+
+[extra_options]
+comments = "This is a comment for the A record update."
+
+[expected_params]
+address = "2.3.4.5"
+comments = "This is a comment for the A record update."
+domain = "wcw.example.com"
+token = "token1"
+type = "A"
+zone = "example.com"

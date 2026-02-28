@@ -1,0 +1,25 @@
+domain = "example.com"
+
+[record_type_command.SOA]
+primary_ns = "ns.example.com"
+responsible_person = "john.doe@mail.example.com"
+serial = 18
+refresh = 900
+retry = 300
+expire = 604800
+minimum = 900
+use_serial_date_scheme = false
+
+[expected_params]
+domain = "example.com"
+expire = "604800"
+minimum = "900"
+primaryNameServer = "ns.example.com"
+refresh = "900"
+responsiblePerson = "john.doe@mail.example.com"
+retry = "300"
+serial = "18"
+token = "token1"
+type = "SOA"
+useSerialDateScheme = "false"
+zone = "example.com"
