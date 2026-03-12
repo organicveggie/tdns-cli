@@ -13,14 +13,14 @@ pub enum RecordTypeCommand {
         #[arg(help = "IPv4 address for the A record")]
         address: Option<String>,
 
-        #[arg(long = "ptr", help = "Create a reverse PTR record for the IP address")]
+        #[arg(long, help = "Create a reverse PTR record for the IP address")]
         ptr: Option<bool>,
 
-        #[arg(long = "ptr_zone", help = "Create a reverse zone for the PTR record")]
+        #[arg(long, help = "Create a reverse zone for the PTR record")]
         ptr_zone: Option<bool>,
 
         #[arg(
-            long = "update_svcb_hints",
+            long,
             help = "Update SVCB hints in the zone for the current record"
         )]
         update_svcb_hints: Option<bool>,
@@ -29,14 +29,14 @@ pub enum RecordTypeCommand {
         #[arg(help = "IPv6 address for the AAAA record")]
         address: Option<String>,
 
-        #[arg(long = "ptr", help = "Create a reverse PTR record for the IP address")]
+        #[arg(long, help = "Create a reverse PTR record for the IP address")]
         ptr: Option<bool>,
 
-        #[arg(long = "ptr_zone", help = "Create a reverse zone for the PTR record")]
+        #[arg(long, help = "Create a reverse zone for the PTR record")]
         ptr_zone: Option<bool>,
 
         #[arg(
-            long = "update_svcb_hints",
+            long,
             help = "Update SVCB hints in the zone for the current record"
         )]
         update_svcb_hints: Option<bool>,
@@ -110,7 +110,7 @@ pub enum RecordTypeCommand {
         text: Option<String>,
 
         #[arg(
-            long = "split_text",
+            long,
             help = "Split text into multiple strings when adding TXT record"
         )]
         split_text: Option<bool>,

@@ -20,7 +20,7 @@ pub enum Command {
         #[arg(help = "Domain name of the record to add")]
         domain: String,
 
-        #[arg(long = "ttl", help = "TTL in seconds for the record to add")]
+        #[arg(long, help = "TTL in seconds for the record to add")]
         ttl: Option<u32>,
 
         #[arg(
@@ -31,11 +31,11 @@ pub enum Command {
         )]
         overwrite: bool,
 
-        #[arg(long = "comments", help = "Comments for the record to add")]
+        #[arg(long, help = "Comments for the record to add")]
         comments: Option<String>,
 
         #[arg(
-            long = "expiry-ttl",
+            long,
             help = "Expiry TTL in seconds for the record to add",
             long_help = "Set to automatically delete the record when the value in seconds elapses since 
 the record’s last modified time."
@@ -59,8 +59,8 @@ the record’s last modified time."
 
         #[arg(
             value_enum,
-            short = 'd',
-            long = "detail",
+            short,
+            long,
             help = "Level of detail to include when printing zone records",
             default_value_t = get_records::ZoneRecordDetailLevel::Summary,
         )]
@@ -68,7 +68,7 @@ the record’s last modified time."
 
         #[arg(
             value_enum,
-            long = "table_style",
+            long,
             help = "Table style to use when printing zone records",
             default_value_t = TableStyles::Ascii,
         )]
@@ -80,14 +80,14 @@ the record’s last modified time."
         #[arg(help = "Domain name of the record to update")]
         domain: String,
 
-        #[arg(long = "ttl", help = "TTL in seconds for the record to update")]
+        #[arg(long, help = "TTL in seconds for the record to update")]
         ttl: Option<u32>,
 
-        #[arg(long = "comments", help = "Comments for the record to update")]
+        #[arg(long, help = "Comments for the record to update")]
         comments: Option<String>,
 
         #[arg(
-            long = "expiry-ttl",
+            long,
             help = "Expiry TTL in seconds for the record to update",
             long_help = "Set to automatically delete the record when the value in seconds elapses since 
 the record’s last modified time."
