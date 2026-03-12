@@ -68,6 +68,7 @@ the record’s last modified time."
 
         #[arg(
             value_enum,
+            short,
             long,
             help = "Table style to use when printing zone records",
             default_value_t = TableStyles::Ascii,

@@ -44,6 +44,7 @@ pub enum Command {
 
         #[arg(
             value_enum,
+            short,
             long,
             help = "Table style to use when printing zone records. Only applicable when the output format is table.",
             default_value_t = TableStyles::Ascii,
