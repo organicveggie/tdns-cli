@@ -1,0 +1,9 @@
+name = "Update CNAME record"
+zone = "test.example.com"
+domain = "cn.test.example.com"
+ttl = 900
+comments = "This is a comment for the CNAME record update."
+expiry_ttl = 7200
+
+[command.CNAME]
+cname = "cn-raw.example.com"

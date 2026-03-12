@@ -1,0 +1,10 @@
+name = "Update MX record"
+zone = "test.example.com"
+domain = "mx.test.example.com"
+ttl = 900
+comments = "This is a comment for the MX record update."
+expiry_ttl = 7200
+
+[command.MX]
+exchange = "exchange.example.com"
+preference = 10

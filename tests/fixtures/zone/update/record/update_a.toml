@@ -1,0 +1,9 @@
+name = "Update A record"
+zone = "test.example.com"
+domain = "www"
+ttl = 3600
+comments = "This is a comment for the A record update."
+expiry_ttl = 7200
+
+[command.A]
+address = "192.168.100.5"

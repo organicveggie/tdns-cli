@@ -1,0 +1,9 @@
+name = "Update NS record"
+zone = "example.com"
+domain = "test.example.com"
+ttl = 3600
+comments = "This is a comment for the NS record update."
+expiry_ttl = 7200
+
+[command.NS]
+name_server = "ns.example.com"

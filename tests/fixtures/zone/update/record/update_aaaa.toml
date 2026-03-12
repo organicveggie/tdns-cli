@@ -1,0 +1,9 @@
+name = "Update AAAA record"
+zone = "test-aaaa.example.com"
+domain = "www"
+ttl = 3600
+comments = "This is a comment for the AAAA record update."
+expiry_ttl = 7200
+
+[command.AAAA]
+address = "2001:db8::1"
