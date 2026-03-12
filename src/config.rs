@@ -143,13 +143,13 @@ impl ConfigManager for ConfigFileManager {
             token: "".to_owned(),
             host: "".to_owned(),
         };
-        let js = match serde_json::to_string_pretty(&config) {
+        let toml = match toml::to_string(&config) {
             Ok(s) => s,
-            Err(error) => return Err(ConfigFileError::JsonSerializeError { source: error }),
+            Err(error) => return Err(ConfigFileError::TomlSerializeError { source: error }),
         };
-        match config_file.write_all(js.as_bytes()) {
+        match config_file.write_all(toml.as_bytes()) {
             Err(error) => {
-                return Err(ConfigFileError::JsonWriteError {
+                return Err(ConfigFileError::WriteError {
                     file_name: file_name.to_string(),
                     error,
                 });
@@ -171,10 +171,10 @@ impl ConfigManager for ConfigFileManager {
             }
         };
 
-        let config: Config = match serde_json::from_str(&contents) {
+        let config: Config = match toml::from_str(&contents) {
             Ok(c) => c,
             Err(error) => {
-                return Err(ConfigFileError::JsonDeserializeError {
+                return Err(ConfigFileError::TomlDeserializeError { 
                     file_name: file_name.to_string(),
                     error,
                 });
@@ -245,18 +245,18 @@ pub enum ConfigFileError {
     #[error("config directory exists but is not a directory: {directory_name}")]
     InvalidConfigDirectory { directory_name: String },
 
-    #[error("error deserializing config file from JSON file: {file_name}")]
-    JsonDeserializeError {
+    #[error("error deserializing config file from TOML file: {file_name}")]
+    TomlDeserializeError {
         file_name: String,
         #[source]
-        error: serde_json::Error,
+        error: toml::de::Error,
     },
 
-    #[error("error serializing config file into JSON")]
-    JsonSerializeError { source: serde_json::Error },
+    #[error("error serializing config file into TOML")]
+    TomlSerializeError { source: toml::ser::Error },
 
-    #[error("error writing JSON into config file: {file_name}")]
-    JsonWriteError {
+    #[error("error writing into config file: {file_name}")]
+    WriteError {
         file_name: String,
         #[source]
         error: std::io::Error,
@@ -344,13 +344,13 @@ pub fn create_config_file(file_name: &str, force: &bool) -> Result<(), ConfigFil
         token: "".to_owned(),
         host: "".to_owned(),
     };
-    let js = match serde_json::to_string_pretty(&config) {
-        Ok(s) => s,
-        Err(error) => return Err(ConfigFileError::JsonSerializeError { source: error }),
+    let toml = match toml::to_string(&config) {
+        Ok(t) => t,
+        Err(error) => return Err(ConfigFileError::TomlSerializeError { source: error }),
     };
-    match config_file.write_all(js.as_bytes()) {
+    match config_file.write_all(toml.as_bytes()) {
         Err(error) => {
-            return Err(ConfigFileError::JsonWriteError {
+            return Err(ConfigFileError::WriteError {
                 file_name: file_name.to_string(),
                 error,
             });
@@ -372,10 +372,10 @@ pub fn read_config_file(file_name: &str) -> Result<Config, ConfigFileError> {
         }
     };
 
-    let config: Config = match serde_json::from_str(&contents) {
+    let config: Config = match toml::from_str(&contents) {
         Ok(c) => c,
         Err(error) => {
-            return Err(ConfigFileError::JsonDeserializeError {
+            return Err(ConfigFileError::TomlDeserializeError {
                 file_name: file_name.to_string(),
                 error,
             });
