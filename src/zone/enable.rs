@@ -21,12 +21,12 @@ struct Response {
     status: String,
 }
 
-pub async fn run(
-    app_config: &config::ApplicationConfig,
+pub async fn run<'a, T>(
+    app_config: &mut config::ApplicationConfig<'a, T>,
     config_file_name: &str,
     zone: String,
     mode: Mode,
-) -> Result<(), errors::TdnsError> {
+) -> Result<(), errors::TdnsError> where T: std::io::Write {
     let command_name = match mode {
         Mode::Enable => CMD_NAME_ENABLE,
         Mode::Disable => CMD_NAME_DISABLE,

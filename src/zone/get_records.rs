@@ -39,11 +39,11 @@ impl GetRecordsCmd {
         }
     }
 
-    pub async fn execute(
+    pub async fn execute<'a, T>(
         &self,
         config_file: &str,
-        app_config: &config::ApplicationConfig,
-    ) -> Result<(), TdnsError> {
+        app_config: &mut config::ApplicationConfig<'a, T>,
+    ) -> Result<(), TdnsError> where T: std::io::Write {
         let cfg = match app_config.config_manager.read_config_file(config_file) {
             Ok(c) => c,
             Err(error) => {

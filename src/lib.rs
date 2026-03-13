@@ -62,7 +62,8 @@ pub enum Command {
     },
 }
 
-pub async fn run_cli(app_config: &config::ApplicationConfig, config_file: &str, command: &Command) {
+pub async fn run_cli<'a, T>(app_config: &mut config::ApplicationConfig<'a, T>, config_file: &str, command: &Command) 
+where T: std::io::Write {
     match command {
         Command::Init { force } => {
             println!("Init: force = {:?}", force);
@@ -94,7 +95,7 @@ pub async fn run_cli(app_config: &config::ApplicationConfig, config_file: &str, 
                 Ok(cmd) => cmd,
                 Err(error) => panic!("failed to list zones: {}", error),
             };
-            match cmd.execute(app_config.output.clone()).await {
+            match cmd.execute(app_config.output).await {
                 Ok(()) => {}
                 Err(error) => {
                     print_tdns_error(&error);

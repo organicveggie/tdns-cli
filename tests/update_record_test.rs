@@ -1,6 +1,6 @@
 use rstest::rstest;
 use serde::{Deserialize, Serialize};
-use std::{cell::RefCell, path::PathBuf, rc::Rc};
+use std::{path::PathBuf, rc::Rc};
 use tdns::{config, run_cli, zone};
 
 const TOKEN: &str = "test-add-token";
@@ -27,6 +27,8 @@ struct UpdateRecordTestCase {
 #[rstest]
 #[tokio::test]
 async fn test_update_record(#[files("tests/fixtures/zone/update/update*.json")] path: PathBuf) {
+    use std::io::Cursor;
+
     let file_content = std::fs::read_to_string(path).unwrap();
     let test_case: UpdateRecordTestCase = match serde_json::from_str(&file_content) {
         Ok(tc) => tc,
@@ -68,13 +70,14 @@ async fn test_update_record(#[files("tests/fixtures/zone/update/update*.json")] 
         },
     };
 
-    let writer = Rc::new(RefCell::new(Vec::<u8>::new()));
-    let app_config = config::ApplicationConfig {
+    let mut output_cursor = Cursor::new(Vec::new());
+    let mut output = config::OutputTarget{w: &mut output_cursor};
+    let mut app_config = config::ApplicationConfig {
         config_manager: Box::new(mock_cfg_mgr),
         tdns_client: Rc::new(client),
-        output: config::OutputTarget::IoWrite { writer: writer.clone() },
+        output: &mut output,
     };
 
-    run_cli(&app_config, "test-config.json", &cli_command).await;
+    run_cli(&mut app_config, "test-config.json", &cli_command).await;
     mock.assert();
 }

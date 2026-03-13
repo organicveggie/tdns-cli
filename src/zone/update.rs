@@ -126,16 +126,16 @@ pub struct UpdateRecordResponse {
 }
 
 impl RecordTypeCommand {
-    pub async fn run(
+    pub async fn run<'a, T>(
         &self,
-        app_config: &config::ApplicationConfig,
+        app_config: &mut config::ApplicationConfig<'a, T>,
         config_file_name: &str,
         zone: String,
         domain: String,
         comments: Option<String>,
         ttl: Option<u32>,
         expiry_ttl: Option<u32>,
-    ) -> Result<(), errors::TdnsError> {
+    ) -> Result<(), errors::TdnsError> where T: std::io::Write {
         let cfg = match app_config.config_manager.read_config_file(config_file_name) {
             Ok(c) => c,
             Err(error) => {
