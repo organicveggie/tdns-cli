@@ -38,11 +38,12 @@ async fn main() {
         Err(error) => panic!("Error creating HTTP client: {}", error),
     };
 
-    let app_config = tdns::config::ApplicationConfig {
+    let mut output_target = tdns::config::OutputTarget{w: &mut std::io::stdout()};
+    let mut app_config = tdns::config::ApplicationConfig {
         config_manager: Box::new(config_manager),
         tdns_client: Rc::new(http_client),
-        output: tdns::config::OutputTarget::stdout(),
+        output: &mut output_target,
     };
 
-    tdns::run_cli(&app_config, &cli.config_file, &cli.command).await;
+    tdns::run_cli(&mut app_config, &cli.config_file, &cli.command).await;
 }

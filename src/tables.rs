@@ -71,16 +71,13 @@ impl TableStyles {
         }
     }
 
-    pub fn output_table(
+    pub fn output_table<'a, T>(
         &self,
         table: &mut Table,
-        output_target: &config::OutputTarget,
-    ) -> std::io::Result<()> {
+        output_target: &mut config::OutputTarget<'a, T>,
+    ) -> std::io::Result<()> where T: std::io::Write {
         self.apply(table);
-        output_target.write(&format!("{}", table))?;
-        if self.needs_extra_line() {
-            output_target.write("\n")?;
-        }
+        output_target.writeln_str(&format!("{}", table), self.needs_extra_line())?;
         Ok(())
     }
 

@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::fs::{self, File, create_dir_all};
 use std::io::Write as _;
 use std::path::Path;
@@ -9,55 +8,33 @@ use serde::{Deserialize, Serialize};
 
 use crate::client;
 
-pub enum OutputTarget {
-    FmtWrite {
-        writer: Rc<RefCell<dyn std::fmt::Write>>,
-    },
-    IoWrite {
-        writer: Rc<RefCell<dyn std::io::Write>>,
-    },
+pub struct OutputTarget<'a, T: std::io::Write> {
+    pub w: &'a mut T
 }
 
-impl OutputTarget {
-    pub fn stdout() -> OutputTarget {
-        OutputTarget::IoWrite {
-            writer: Rc::new(RefCell::new(std::io::stdout())),
-        }
+impl<'a, T: std::io::Write> OutputTarget<'a, T> {
+    pub fn write_str(&mut self, s: &str) -> std::io::Result<()> {
+        self.w.write_all(s.as_bytes())
     }
 
-    pub fn write(&self, s: &str) -> std::io::Result<()> {
-        match self {
-            OutputTarget::FmtWrite { writer } => writer
-                .borrow_mut()
-                .write_str(s)
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)),
-            OutputTarget::IoWrite { writer } => writer.borrow_mut().write_all(s.as_bytes()),
-        }
+    pub fn writeln(&mut self, s: &str) -> std::io::Result<()> {
+        self.w.write_all(s.as_bytes())?;
+        self.w.write_all("\n".as_bytes())
     }
 
-    pub fn writeln(&self, s: &str) -> std::io::Result<()> {
-        self.write(s)?;
-        self.write("\n")
-    }
-}
-
-impl Clone for OutputTarget {
-    fn clone(&self) -> Self {
-        match self {
-            OutputTarget::FmtWrite { writer } => OutputTarget::FmtWrite {
-                writer: Rc::clone(writer),
-            },
-            OutputTarget::IoWrite { writer } => OutputTarget::IoWrite {
-                writer: Rc::clone(writer),
-            },
+    pub fn writeln_str(&mut self, s: &str, newline: bool) -> std::io::Result<()> {
+        if newline {
+            self.writeln(s)
+        } else {
+            self.write_str(s)
         }
     }
 }
 
-pub struct ApplicationConfig {
+pub struct ApplicationConfig<'a, T: std::io::Write> {
     pub config_manager: Box<dyn ConfigManager>,
     pub tdns_client: Rc<dyn client::TdnsClient>,
-    pub output: OutputTarget,
+    pub output: &'a mut OutputTarget<'a, T>,
 }
 
 #[automock]

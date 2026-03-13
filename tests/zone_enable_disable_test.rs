@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::io::Cursor;
 use std::rc::Rc;
 
 use tdns::{config, run_cli, zone};
@@ -55,14 +55,15 @@ async fn test_disable_zone() {
     let cli_command =
         tdns::Command::Zone { zone: ZONE.to_string(), zone_command: tdns::zone::Command::Disable };
 
-    let writer = Rc::new(RefCell::new(Vec::<u8>::new()));
-    let app_config = config::ApplicationConfig {
+    let mut output_cursor = Cursor::new(Vec::new());
+    let mut output = config::OutputTarget{w: &mut output_cursor};
+    let mut app_config = config::ApplicationConfig {
         config_manager: Box::new(mock_cfg_mgr),
         tdns_client: Rc::new(client),
-        output: config::OutputTarget::IoWrite { writer: writer.clone() },
+        output: &mut output,
     };
 
-    run_cli(&app_config, "test-config.json", &cli_command).await;
+    run_cli(&mut app_config, "test-config.json", &cli_command).await;
     mock.assert();
 }
 
@@ -88,13 +89,14 @@ async fn test_ensable_zone() {
     let cli_command =
         tdns::Command::Zone { zone: ZONE.to_string(), zone_command: tdns::zone::Command::Enable };
 
-    let writer = Rc::new(RefCell::new(Vec::<u8>::new()));
-    let app_config = config::ApplicationConfig {
+    let mut output_cursor = Cursor::new(Vec::new());
+    let mut output = config::OutputTarget{w: &mut output_cursor};
+    let mut app_config = config::ApplicationConfig {
         config_manager: Box::new(mock_cfg_mgr),
         tdns_client: Rc::new(client),
-        output: config::OutputTarget::IoWrite { writer: writer.clone() },
+        output: &mut output,
     };
 
-    run_cli(&app_config, "test-config.json", &cli_command).await;
+    run_cli(&mut app_config, "test-config.json", &cli_command).await;
     mock.assert();
 }

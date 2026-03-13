@@ -167,13 +167,13 @@ pub struct ListCmd {
 }
 
 impl ListCmd {
-    pub fn create(
-        app_config: &config::ApplicationConfig,
+    pub fn create<'a, T>(
+        app_config: &config::ApplicationConfig<'a, T>,
         config_file: &str,
         output_format: &cli::OutputFormat,
         sort: ZoneSortMode,
         table_style: TableStyles,
-    ) -> Result<ListCmd, config::ConfigFileError> {
+    ) -> Result<ListCmd, config::ConfigFileError> where T: std::io::Write {
         let cfg = app_config.config_manager.read_config_file(config_file)?;
         Ok(ListCmd {
             client: Rc::clone(&app_config.tdns_client),
@@ -221,7 +221,7 @@ impl ListCmd {
         }
     }
 
-    pub async fn execute(&self, output_target: config::OutputTarget) -> Result<(), TdnsError> {
+    pub async fn execute<'a, T>(&self, output_target: &mut config::OutputTarget<'a, T>) -> Result<(), TdnsError> where T: std::io::Write{
         let zones = self.get_zones().await?;
         if let Some(zone_list) = zones {
             if zone_list.zones.is_empty() {
@@ -250,7 +250,7 @@ impl ListCmd {
 
                     for zone in zone_list.zones {
                         let mut zone_table = zone.to_table();
-                        match self.table_style.output_table(&mut zone_table, &output_target) {
+                        match self.table_style.output_table(&mut zone_table, output_target) {
                             Ok(()) => {}
                             Err(error) => {
                                 return Err(self.make_output_error(error));
@@ -284,7 +284,7 @@ impl TdnsErrorGenerator for ListCmd {
 
 #[cfg(test)]
 mod tests {
-    use std::cell::RefCell;
+    use std::io::Cursor;
 
     use super::*;
 
@@ -319,10 +319,12 @@ mod tests {
         let mut mock_cfg_mgr = config::MockConfigManager::new();
         mock_cfg_mgr.expect_read_config_file().returning(|_| Ok(config::Config::new(HOST, TOKEN)));
 
+        let mut output_cursor = Cursor::new(Vec::new());
+        let mut output = config::OutputTarget{w: &mut output_cursor};
         let app_config = config::ApplicationConfig {
             config_manager: Box::new(mock_cfg_mgr),
             tdns_client: Rc::new(mock_client),
-            output: config::OutputTarget::IoWrite { writer: Rc::new(RefCell::new(Vec::new())) },
+            output: &mut output,
         };
 
         let list_cmd = ListCmd::create(
@@ -381,11 +383,12 @@ mod tests {
         let mut mock_cfg_mgr = config::MockConfigManager::new();
         mock_cfg_mgr.expect_read_config_file().returning(|_| Ok(config::Config::new(HOST, TOKEN)));
 
-        let writer = Rc::new(RefCell::new(Vec::<u8>::new()));
+        let mut output_cursor = Cursor::new(Vec::new());
+        let mut output = config::OutputTarget{w: &mut output_cursor};
         let app_config = config::ApplicationConfig {
             config_manager: Box::new(mock_cfg_mgr),
             tdns_client: Rc::new(mock_client),
-            output: config::OutputTarget::IoWrite { writer: writer.clone() },
+            output: &mut output,
         };
 
         let list_cmd = ListCmd::create(
@@ -403,6 +406,7 @@ mod tests {
         assert_eq!(zones.zones[0].name, "0.in-addr.arpa");
         assert_eq!(zones.zones[1].name, "example.com");
 
-        println!("Output:\n{}", String::from_utf8(writer.borrow().clone()).unwrap());
+        let output_bytes = output_cursor.into_inner();
+        println!("Output:\n{}", String::from_utf8(output_bytes).unwrap());
     }
 }

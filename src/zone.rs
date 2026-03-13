@@ -101,12 +101,12 @@ the record’s last modified time."
 }
 
 impl Command {
-    pub async fn run(
+    pub async fn run<'a, T>(
         &self,
-        app_config: &config::ApplicationConfig,
+        app_config: &mut config::ApplicationConfig<'a, T>,
         config_file_name: &str,
         zone: String,
-    ) -> Result<(), errors::TdnsError> {
+    ) -> Result<(), errors::TdnsError> where T: std::io::Write {
         match self {
             Command::Add { domain, ttl, overwrite, comments, expiry_ttl, add_command } => {
                 return add_command
