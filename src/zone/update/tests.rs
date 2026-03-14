@@ -38,7 +38,7 @@ struct QueryParamsTestCase {
 
 #[rstest]
 fn make_query_params_test(
-    #[files("tests/fixtures/zone/update/make_query_params_*.toml")] path: PathBuf,
+    #[files("src/zone/update/fixtures/make_query_params_*.toml")] path: PathBuf,
 ) {
     const TOKEN: &str = "token1";
     const ZONE: &str = "example.com";
