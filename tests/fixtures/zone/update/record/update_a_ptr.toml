@@ -4,6 +4,31 @@ domain = "www"
 ttl = 3600
 comments = "This is a comment for the A record update."
 expiry_ttl = 7200
+response = '''{
+    "response": {
+        "zone": {
+            "name": "test.example.com",
+            "type": "Primary",
+            "internal": false,
+            "dnssecStatus": "SignedWithNSEC",
+            "disabled": false
+        },
+        "updatedRecord": {
+            "disabled": false,
+            "name": "www.test.example.com",
+            "type": "A",
+            "ttl": 900,
+            "rData": {
+                "address": "192.168.25.25",
+                "serial": 75
+            },
+            "dnssecStatus": "Unknown",
+            "lastUsedOn": "0001-01-01T00:00:00"
+        }
+    },
+    "status": "ok"
+}
+'''
 
 [command.A]
 address = "192.168.100.5"
