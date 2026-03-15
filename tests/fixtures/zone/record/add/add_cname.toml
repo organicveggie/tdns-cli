@@ -1,0 +1,23 @@
+name = "Add CNAME record"
+zone = "example.com"
+domain = "cnamehost"
+token = "test-add-token-aaaa"
+ttl = 300
+overwrite = false
+comments = "Test record"
+
+response = '''{
+    "response": {
+        "id": "3456",
+        "name": "ipv6host",
+        "type": "CNAME",
+        "content": "host2.example.com",
+        "ttl": "300",
+        "lastModified": "2025-02-26T07:57:08.1842183Z",
+    },
+    "server": "ns.example.com",
+    "status": "success"
+}'''
+
+[command.CNAME]
+cname = "host2.example.com"

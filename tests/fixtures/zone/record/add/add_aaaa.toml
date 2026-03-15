@@ -1,0 +1,26 @@
+name = "Add AAAA record"
+zone = "example.com"
+domain = "ipv6host"
+token = "test-add-token-aaaa"
+ttl = 3600
+overwrite = false
+comments = "Test record"
+
+response = '''{
+    "response": {
+        "id": "2345",
+        "name": "ipv6host",
+        "type": "AAAA",
+        "content": "2001:db8::1",
+        "ttl": "3600",
+        "lastModified": "2025-02-26T07:57:08.1842183Z",
+    },
+    "server": "ns.example.com",
+    "status": "success"
+}'''
+
+[command.AAAA]
+address = "2001:db8::1"
+ptr = false
+ptr_zone = false
+update_svcb_hints = false
