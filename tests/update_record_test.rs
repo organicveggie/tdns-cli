@@ -25,7 +25,7 @@ struct UpdateRecordTestCase {
 #[rstest]
 #[tokio::test]
 async fn test_update_record_toml(
-    #[files("tests/fixtures/zone/update/record/*.toml")] testcase_path: PathBuf,
+    #[files("tests/fixtures/zone/record/update/*.toml")] testcase_path: PathBuf,
 ) {
     const TOKEN: &str = "test-add-token";
 
