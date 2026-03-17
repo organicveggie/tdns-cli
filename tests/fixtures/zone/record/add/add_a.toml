@@ -1,0 +1,26 @@
+name = "Add A record"
+zone = "test.example.com"
+domain = "www"
+token = "test-add-token-a"
+ttl = 3600
+overwrite = false
+comments = "Test record"
+
+response = '''{
+    "response": {
+        "id": "123",
+        "name": "www",
+        "type": "A",
+        "content": "192.168.1.17",
+        "ttl": "3600",
+        "lastModified": "2025-02-26T07:57:08.1842183Z",
+    },
+    "server": "ns.example.com",
+    "status": "success"
+}'''
+
+[command.A]
+address = "192.168.1.17"
+ptr = false
+ptr_zone = false
+update_svcb_hints = false

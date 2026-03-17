@@ -1,9 +1,7 @@
 use rstest::rstest;
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, rc::Rc};
+use std::{io::Cursor, path::PathBuf, rc::Rc};
 use tdns::{config, run_cli, zone};
-
-const TOKEN: &str = "test-add-token";
 
 fn make_mock_config(url: String, token: String) -> config::MockConfigManager {
     let mut mock = config::MockConfigManager::new();
@@ -21,18 +19,20 @@ struct UpdateRecordTestCase {
     comments: Option<String>,
     expiry_ttl: Option<u32>,
     command: zone::update::RecordTypeCommand,
-    mock_response: Option<serde_json::Value>,
+    response: String,
 }
 
 #[rstest]
 #[tokio::test]
-async fn test_update_record(#[files("tests/fixtures/zone/update/update*.json")] path: PathBuf) {
-    use std::io::Cursor;
+async fn test_update_record_toml(
+    #[files("tests/fixtures/zone/record/update/*.toml")] testcase_path: PathBuf,
+) {
+    const TOKEN: &str = "test-add-token";
 
-    let file_content = std::fs::read_to_string(path).unwrap();
-    let test_case: UpdateRecordTestCase = match serde_json::from_str(&file_content) {
+    let file_content = std::fs::read_to_string(testcase_path.as_path()).unwrap();
+    let test_case: UpdateRecordTestCase = match toml::from_str(&file_content) {
         Ok(tc) => tc,
-        Err(e) => panic!("Failed to parse test case from JSON: {}", e),
+        Err(error) => panic!("Failed to parse test case from TOML file: {}", error),
     };
 
     // Request a new server from the pool
@@ -46,16 +46,12 @@ async fn test_update_record(#[files("tests/fixtures/zone/update/update*.json")] 
     let client = tdns::client::TdnsHttpClient::new(true).unwrap();
 
     // Setup the mock response based on the test case
-    let body = match test_case.mock_response {
-        Some(resp) => serde_json::to_string(&resp).unwrap(),
-        None => "".to_string(),
-    };
     let mock = server
         .mock("POST", zone::update::API_UPDATE_RECORD_PATH)
         .match_query(mockito::Matcher::Any)
         .with_status(200)
         .with_header("Content-Type", "application/json")
-        .with_body(body)
+        .with_body(test_case.response)
         .create_async()
         .await;
 
@@ -70,8 +66,8 @@ async fn test_update_record(#[files("tests/fixtures/zone/update/update*.json")] 
         },
     };
 
-    let mut output_cursor = Cursor::new(Vec::new());
-    let mut output = config::OutputTarget{w: &mut output_cursor};
+    let mut output_cursor = Cursor::new(Vec::<u8>::new());
+    let mut output = config::OutputTarget { w: &mut output_cursor };
     let mut app_config = config::ApplicationConfig {
         config_manager: Box::new(mock_cfg_mgr),
         tdns_client: Rc::new(client),
@@ -79,5 +75,6 @@ async fn test_update_record(#[files("tests/fixtures/zone/update/update*.json")] 
     };
 
     run_cli(&mut app_config, "test-config.json", &cli_command).await;
+
     mock.assert();
 }

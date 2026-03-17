@@ -1,0 +1,24 @@
+name = "Add MX record"
+zone = "example.com"
+domain = "mxhost2"
+token = "test-add-token-a"
+ttl = 420
+overwrite = false
+comments = "Test record"
+
+response = '''{
+    "response": {
+        "id": "123",
+        "name": "mxhost2",
+        "type": "MX",
+        "content": "exchange2",
+        "ttl": "420",
+        "lastModified": "2025-02-26T07:57:08.1842183Z",
+    },
+    "server": "ns.example.com",
+    "status": "success"
+}'''
+
+[command.MX]
+exchange = "exchange2.example.com"
+preference = 42

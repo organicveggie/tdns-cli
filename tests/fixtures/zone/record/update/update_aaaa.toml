@@ -1,0 +1,34 @@
+name = "Update AAAA record"
+zone = "test-aaaa.example.com"
+domain = "www"
+ttl = 3600
+comments = "This is a comment for the AAAA record update."
+expiry_ttl = 7200
+response = '''{
+    "response": {
+        "zone": {
+            "name": "test-aaaa.example.com",
+            "type": "Primary",
+            "internal": false,
+            "dnssecStatus": "SignedWithNSEC",
+            "disabled": false
+        },
+        "updatedRecord": {
+            "disabled": false,
+            "name": "www.test-aaaa.example.com",
+            "type": "AAAA",
+            "ttl": 900,
+            "rData": {
+                "address": "2001:db8::1",
+                "serial": 75
+            },
+            "dnssecStatus": "Unknown",
+            "lastUsedOn": "0001-01-01T00:00:00"
+        }
+    },
+    "status": "ok"
+}
+'''
+
+[command.AAAA]
+address = "2001:db8::1"

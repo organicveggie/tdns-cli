@@ -1,5 +1,5 @@
 use clap::Subcommand;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::client::QueryBuilder;
 use crate::{config, errors, zone::helpers};
@@ -7,7 +7,7 @@ use crate::{config, errors, zone::helpers};
 pub const CMD_NAME: &str = "Add Zone Record";
 pub const API_ADD_RECORD_PATH: &str = "/api/zones/records/add";
 
-#[derive(Debug, strum::Display, strum::EnumString, Subcommand)]
+#[derive(Debug, Deserialize, Serialize, strum::Display, strum::EnumString, Subcommand)]
 pub enum RecordTypeCommand {
     A {
         #[arg(help = "IPv4 address for the A record")]
@@ -18,11 +18,7 @@ pub enum RecordTypeCommand {
             help = "Create a reverse PTR record for the IP address"
         )]
         ptr: bool,
-        #[arg(
-            long,
-            default_value_t = false,
-            help = "Create a reverse zone for the PTR record"
-        )]
+        #[arg(long, default_value_t = false, help = "Create a reverse zone for the PTR record")]
         ptr_zone: bool,
         #[arg(
             long,
@@ -40,11 +36,7 @@ pub enum RecordTypeCommand {
             help = "Create a reverse PTR record for the IP address"
         )]
         ptr: bool,
-        #[arg(
-            long,
-            default_value_t = false,
-            help = "Create a reverse zone for the PTR record"
-        )]
+        #[arg(long, default_value_t = false, help = "Create a reverse zone for the PTR record")]
         ptr_zone: bool,
         #[arg(
             long,
@@ -115,8 +107,10 @@ impl RecordTypeCommand {
         comments: Option<String>,
         ttl: Option<u32>,
         expiry_ttl: Option<u32>,
-    ) -> Result<(), errors::TdnsError> 
-    where T: std::io::Write {
+    ) -> Result<(), errors::TdnsError>
+    where
+        T: std::io::Write,
+    {
         let cfg = match app_config.config_manager.read_config_file(config_file_name) {
             Ok(c) => c,
             Err(error) => {

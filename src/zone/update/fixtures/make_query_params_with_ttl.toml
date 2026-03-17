@@ -1,0 +1,15 @@
+domain = "wcw"
+
+[record_type_command.A]
+address = "2.3.4.5"
+
+[extra_options]
+ttl = 3600
+
+[expected_params]
+address = "2.3.4.5"
+ttl = "3600"
+domain = "wcw.example.com"
+token = "token1"
+type = "A"
+zone = "example.com"
