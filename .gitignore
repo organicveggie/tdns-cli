@@ -33,3 +33,5 @@ target/
 # Default config file
 ~/.config/tdns-cli/*.json
 ~/.config/tdns-cli/*.toml
+
+plan-dist-manifest.json
