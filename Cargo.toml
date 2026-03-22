@@ -8,7 +8,7 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 async-trait = "0.1.89"
-clap = { version = "4.5.54", features = ["derive", "wrap_help"] }
+clap = { version = "4.5.60", features = ["derive", "wrap_help"] }
 mockall = "0.14.0"
 mockito = "1.7.2"
 pretty_assertions = "1.4.1"
