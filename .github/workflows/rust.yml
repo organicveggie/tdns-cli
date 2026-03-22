@@ -24,10 +24,6 @@ jobs:
     - uses: actions/checkout@v6
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
-      with:
-        # Point this to the directory containing Cargo.toml
-        # Format: "path/to/workspace -> target/directory"
-        workspaces: "tdns -> tdns/target"
     - name: Build binaries in "${{ matrix.BUILD_TARGET }}" mode
       run: cargo build --profile ${{ matrix.BUILD_TARGET }}
     - name: Set Output
