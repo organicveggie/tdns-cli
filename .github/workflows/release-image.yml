@@ -47,12 +47,8 @@ jobs:
         with:
           images: organicveggie/tdns-cli-rs
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            # use custom value and match part of it
-            type=semver,pattern={{version}},value=p1/v1.0.0,match=v(\d.\d.\d)$
-            type=sha
+            type=semver,pattern={{version}},value=${{ github.ref_name }},match=tdns/v(\d.\d.\d)$
+            type=semver,pattern={{major}}.{{minor}},value=${{ github.ref_name }},match=tdns/v(\d.\d).\d+$
 
       - name: Set up Docker buildx
         id: buildx
@@ -63,7 +59,7 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          push: true
+          push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: ${{ matrix.platform }}
