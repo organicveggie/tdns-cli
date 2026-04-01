@@ -8,12 +8,16 @@ ARG TARGETARCH
 
 # Install musl tools for static linking (ensures compatibility with minimal base images)
 RUN <<RUN_CMD_EOF
-if [ "$TARGETARCH" = "arm64" ]; then 
-    ARCHITECTURE=aarch64; 
+if [ "${TARGETARCH}" = "arm64" ]; then 
+    ARCHITECTURE="aarch64"
 else 
-    ARCHITECTURE="${TARGETARCH}}"; 
+    ARCHITECTURE="${TARGETARCH}"
 fi
-TDNS_TARGET_ARCH=${ARCHITECTURE}-unknown-linux-musl
+TDNS_TARGET_ARCH="${ARCHITECTURE}-unknown-linux-musl"
+
+echo "TARGETARCH = ${TARGETARCH}"
+echo "ARCHITECTURE = ${ARCHITECTURE}"
+echo "TDNS_TARGET_ARCH = ${TDNS_TARGET_ARCH}"
 
 set -ex
 apt-get update
@@ -30,12 +34,12 @@ COPY Cargo.toml Cargo.lock ./
 
 # Create a dummy src/main.rs and build to cache dependencies
 RUN <<RUN_CMD_EOF
-if [ "$TARGETARCH" = "arm64" ]; then 
-    ARCHITECTURE=aarch64; 
+if [ "${TARGETARCH}" = "arm64" ]; then 
+    ARCHITECTURE="aarch64"
 else 
-    ARCHITECTURE="${TARGETARCH}}"; 
+    ARCHITECTURE="${TARGETARCH}"
 fi
-TDNS_TARGET_ARCH=${ARCHITECTURE}-unknown-linux-musl
+TDNS_TARGET_ARCH="${ARCHITECTURE}-unknown-linux-musl"
 
 mkdir src/
 echo "fn main() {println!(\"if you see this, the build broke\")}" > src/main.rs
@@ -47,12 +51,12 @@ COPY . .
 
 # Build the application for the musl target
 RUN <<RUN_CARGO_BUILD_EOF
-if [ "$TARGETARCH" = "arm64" ]; then 
-    ARCHITECTURE=aarch64; 
+if [ "${TARGETARCH}" = "arm64" ]; then 
+    ARCHITECTURE=aarch64
 else 
-    ARCHITECTURE="${TARGETARCH}}"; 
+    ARCHITECTURE="${TARGETARCH}"
 fi
-TDNS_TARGET_ARCH=${ARCHITECTURE}-unknown-linux-musl
+TDNS_TARGET_ARCH="${ARCHITECTURE}-unknown-linux-musl"
 
 cargo build --release --target ${TDNS_TARGET_ARCH}
 
