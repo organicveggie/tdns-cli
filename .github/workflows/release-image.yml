@@ -48,7 +48,7 @@ jobs:
           images: organicveggie/tdns-cli-rs
           tags: |
             type=semver,pattern={{version}},value=${{ github.ref_name }},match=tdns/v(\d+.\d+.\d+)$
-            type=semver,pattern={{major}}.{{minor}},value=${{ github.ref_name }},match=tdns/v(\d+.\d+).\d+$
+            type=semver,pattern={{major}}.{{minor}},value=${{ github.ref_name }},match=tdns/v(\d+.\d+.\d+)$
 
       - name: Set up Docker buildx
         id: buildx
