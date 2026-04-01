@@ -10,6 +10,8 @@ ARG TARGETARCH
 RUN <<RUN_CMD_EOF
 if [ "${TARGETARCH}" = "arm64" ]; then 
     ARCHITECTURE="aarch64"
+elif [ "${TARGETARCH}" = "amd64" ]; then 
+    ARCHITECTURE="x86_64"
 else 
     ARCHITECTURE="${TARGETARCH}"
 fi
@@ -36,6 +38,8 @@ COPY Cargo.toml Cargo.lock ./
 RUN <<RUN_CMD_EOF
 if [ "${TARGETARCH}" = "arm64" ]; then 
     ARCHITECTURE="aarch64"
+elif [ "${TARGETARCH}" = "amd64" ]; then 
+    ARCHITECTURE="x86_64"
 else 
     ARCHITECTURE="${TARGETARCH}"
 fi
@@ -53,6 +57,8 @@ COPY . .
 RUN <<RUN_CARGO_BUILD_EOF
 if [ "${TARGETARCH}" = "arm64" ]; then 
     ARCHITECTURE=aarch64
+elif [ "${TARGETARCH}" = "amd64" ]; then 
+    ARCHITECTURE="x86_64"
 else 
     ARCHITECTURE="${TARGETARCH}"
 fi
