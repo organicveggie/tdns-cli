@@ -12,11 +12,14 @@ if [ "${TARGETARCH}" = "arm64" ]; then
     ARCHITECTURE="aarch64"
 elif [ "${TARGETARCH}" = "amd64" ]; then 
     ARCHITECTURE="x86_64"
+elif [ "${TARGETARCH}" = "arm" ]; then 
+    ARCHITECTURE="armv7"
 else 
     ARCHITECTURE="${TARGETARCH}"
 fi
 TDNS_TARGET_ARCH="${ARCHITECTURE}-unknown-linux-musl"
 
+echo "TARGETPLATFORM = ${TARGETPLATFORM}"
 echo "TARGETARCH = ${TARGETARCH}"
 echo "ARCHITECTURE = ${ARCHITECTURE}"
 echo "TDNS_TARGET_ARCH = ${TDNS_TARGET_ARCH}"
@@ -40,7 +43,9 @@ if [ "${TARGETARCH}" = "arm64" ]; then
     ARCHITECTURE="aarch64"
 elif [ "${TARGETARCH}" = "amd64" ]; then 
     ARCHITECTURE="x86_64"
-else 
+elif [ "${TARGETARCH}" = "arm" ]; then 
+    ARCHITECTURE="armv7"
+else
     ARCHITECTURE="${TARGETARCH}"
 fi
 TDNS_TARGET_ARCH="${ARCHITECTURE}-unknown-linux-musl"
@@ -59,7 +64,9 @@ if [ "${TARGETARCH}" = "arm64" ]; then
     ARCHITECTURE=aarch64
 elif [ "${TARGETARCH}" = "amd64" ]; then 
     ARCHITECTURE="x86_64"
-else 
+elif [ "${TARGETARCH}" = "arm" ]; then 
+    ARCHITECTURE="armv7"
+else
     ARCHITECTURE="${TARGETARCH}"
 fi
 TDNS_TARGET_ARCH="${ARCHITECTURE}-unknown-linux-musl"
