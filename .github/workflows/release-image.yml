@@ -52,7 +52,9 @@ jobs:
 
       - name: Set up Docker buildx
         id: buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
+        with:
+          driver-opts: network=host
 
       - name: Build
         uses: docker/build-push-action@v4
@@ -66,5 +68,8 @@ jobs:
 
       - name: Inspect
         run: |
-          docker buildx imagetools inspect localhost:5000/organicveggie/tdns-cli-rs:latest
-          docker buildx imagetools inspect localhost:5000/organicveggie/tdns-cli-rs:${{ steps.meta.ouputs.version }}
+          curl -X GET https://localhost:5000/v2/organicveggie/tdns-cli-rs/tags/list
+
+      # - name: Inspect
+      #   run: |
+      #     docker buildx imagetools inspect localhost:5000/organicveggie/tdns-cli-rs:${{ steps.meta.outputs.version }}
