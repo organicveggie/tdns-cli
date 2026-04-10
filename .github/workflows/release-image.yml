@@ -51,8 +51,6 @@ jobs:
           tags: |
             type=semver,pattern={{version}},value=${{ github.ref_name }},match=tdns/v(\d+.\d+.\d+)$
             type=semver,pattern={{major}}.{{minor}},value=${{ github.ref_name }},match=tdns/v(\d+.\d+.\d+)$
-          flavor:
-            prefix=localhost:5000/,onlatest=true
 
       - name: Set up Docker buildx
         id: buildx
@@ -66,7 +64,8 @@ jobs:
           context: .
           file: Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          # tags: ${{ steps.meta.outputs.tags }}
+          tags: localhost:5000/organicveggie/tdns-cli-rs:latest
           labels: ${{ steps.meta.outputs.labels }}
           platforms: ${{ matrix.platform }}
 
