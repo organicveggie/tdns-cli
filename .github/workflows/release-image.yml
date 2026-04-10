@@ -49,6 +49,8 @@ jobs:
           tags: |
             type=semver,pattern={{version}},value=${{ github.ref_name }},match=tdns/v(\d+.\d+.\d+)$
             type=semver,pattern={{major}}.{{minor}},value=${{ github.ref_name }},match=tdns/v(\d+.\d+.\d+)$
+          flavor:
+            prefix=localhost:5000/,onlatest=true
 
       - name: Set up Docker buildx
         id: buildx
@@ -57,18 +59,18 @@ jobs:
           driver-opts: network=host
 
       - name: Build
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
-          push: false
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: ${{ matrix.platform }}
 
       - name: Inspect
         run: |
-          curl -X GET https://localhost:5000/v2/organicveggie/tdns-cli-rs/tags/list
+          curl -vL -X GET http://localhost:5000/v2/organicveggie/tdns-cli-rs/tags/list
 
       # - name: Inspect
       #   run: |
