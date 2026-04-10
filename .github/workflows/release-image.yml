@@ -41,6 +41,8 @@ jobs:
           persist-credentials: false
           submodules: recursive
 
+      - uses: Swatinem/rust-cache@v2
+
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v6
