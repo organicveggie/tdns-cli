@@ -110,5 +110,13 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create $(printf 'organicveggie/tdns-cli-rs@sha256:%s ' *) \
-            --tag ${{ steps.meta.outputs.tags }}
+          # 1. Create an array of digests
+          sources=$(printf 'organicveggie/tdns-cli-rs@sha256:%s ' *)
+          
+          # 2. Convert newline-separated tags into --tag arguments
+          # This reads the multiline output into an array and prepends '--tag' to each
+          tags=$(echo "${{ steps.meta.outputs.tags }}" | xargs -I {} echo "--tag {}")
+
+          # 3. Execute the create command
+          # Note: we use 'eval' or simply pass the variables to ensure shell expansion
+          docker buildx imagetools create $tags $sources
