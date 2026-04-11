@@ -35,18 +35,18 @@ FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
 COPY --from=target-mapper /target_triple /target_triple
 
-# Build dependencies - this is the caching Docker layer!
-RUN <<RUN_CMD_EOF
-cargo chef cook --release --target $(cat /target_triple) --recipe-path recipe.json
-RUN_CMD_EOF
-
 # Install musl tools for static linking (ensures compatibility with minimal base images)
 RUN <<RUN_CMD_EOF
 set -ex
 apt-get update
 apt-get install -y musl-tools
-rustup target add $(cat /target_triple)
 rm -rf /var/lib/apt/lists/*
+RUN_CMD_EOF
+
+# Build dependencies - this is the caching Docker layer!
+RUN <<RUN_CMD_EOF
+rustup target add $(cat /target_triple)
+cargo chef cook --release --target $(cat /target_triple) --recipe-path recipe.json
 RUN_CMD_EOF
 
 # Set the working directory inside the container
