@@ -1,8 +1,22 @@
 # syntax=docker/dockerfile:1.11
 
-# --- Builder Stage ---
+# --- Chef Setup Stage ---
 # Use the official Rust image as the build environment
-FROM rust:slim AS builder
+FROM rust:slim AS chef
+
+# We only pay the installation cost once, 
+# it will be cached from the second build onwards
+RUN cargo install --locked cargo-chef 
+WORKDIR /app
+
+# --- Chef Planner Stage ---
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+# --- Chef Builder Stage ---
+FROM chef AS builder 
+COPY --from=planner /app/recipe.json recipe.json
 
 ARG TARGETARCH
 
@@ -11,6 +25,9 @@ ARG TDNS_TARGET_ARCH=$([[ "${TARGETARCH}" == "arm64" ]] && echo "aarch64-unknown
     [[ "${TARGETARCH}" == "amd64" ]] && echo "x86_64-unknown-linux-musl" || \
     [[ "${TARGETARCH}" == "arm" ]] && echo "armv7-unknown-linux-musleabi" || \
     echo "${TARGETARCH}-unknown-linux-musl")
+
+# Build dependencies - this is the caching Docker layer!
+RUN cargo chef cook --release --target ${TDNS_TARGET_ARCH} --recipe-path recipe.json
 
 # Install musl tools for static linking (ensures compatibility with minimal base images)
 RUN <<RUN_CMD_EOF
@@ -24,23 +41,11 @@ RUN_CMD_EOF
 # Set the working directory inside the container
 WORKDIR /usr/src/tdns
 
-# Copy manifest files first to leverage Docker cache for dependencies
-COPY Cargo.toml Cargo.lock ./
-
-# Create a dummy src/main.rs and build to cache dependencies
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/app/target <<RUN_CMD_EOF
-mkdir src/
-echo "fn main() {println!(\"if you see this, the build broke\")}" > src/main.rs
-cargo build --release --target ${TDNS_TARGET_ARCH}
-RUN_CMD_EOF
-
 # Copy the actual source code and build the final application
 COPY . .
 
 # Build the application for the musl target
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/app/target <<RUN_CARGO_BUILD_EOF
+RUN <<RUN_CARGO_BUILD_EOF
 cargo build --release --target ${TDNS_TARGET_ARCH}
 
 # Copy to a temp folder because arg/env variables cannot be referenced in the
