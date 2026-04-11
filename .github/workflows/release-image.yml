@@ -23,17 +23,24 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        platform:
-          - linux/arm64/v8
-          - linux/amd64
+        # Define a map for each platform and its corresponding runner
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64/v8
+            runner: ubuntu-24.04-arm
+
+    # Reference the runner defined in the matrix
+    runs-on: ${{ matrix.runner }}
+    
     services:
       registry:
         image: registry:3
         ports:
           - 5000:5000
+
     steps:
       - uses: actions/checkout@v6
         with:
