@@ -35,6 +35,9 @@ FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
 COPY --from=target-mapper /target_triple /target_triple
 
+# Tell apt-get and debconf to be non-interactive to avoid prompts during package installation.
+ARG DEBIAN_FRONTEND=noninteractive
+
 # Install musl tools for static linking (ensures compatibility with minimal base images)
 RUN <<RUN_CMD_EOF
 set -ex
