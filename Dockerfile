@@ -36,7 +36,8 @@ WORKDIR /usr/src/tdns
 COPY Cargo.toml Cargo.lock ./
 
 # Create a dummy src/main.rs and build to cache dependencies
-RUN <<RUN_CMD_EOF
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/app/target <<RUN_CMD_EOF
 if [ "${TARGETARCH}" = "arm64" ]; then 
     TDNS_TARGET_ARCH="aarch64-unknown-linux-musl"
 elif [ "${TARGETARCH}" = "amd64" ]; then 
@@ -56,7 +57,8 @@ RUN_CMD_EOF
 COPY . .
 
 # Build the application for the musl target
-RUN <<RUN_CARGO_BUILD_EOF
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/app/target <<RUN_CARGO_BUILD_EOF
 if [ "${TARGETARCH}" = "arm64" ]; then 
     TDNS_TARGET_ARCH="aarch64-unknown-linux-musl"
 elif [ "${TARGETARCH}" = "amd64" ]; then 
