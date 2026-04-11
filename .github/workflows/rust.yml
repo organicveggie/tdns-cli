@@ -11,6 +11,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BUILD_TARGET: release
 
 jobs:
   build:
@@ -20,10 +21,8 @@ jobs:
         include:
           - platform: linux/amd64
             runner: ubuntu-latest
-            build_target: [release] # refers to a cargo profile
           - platform: linux/arm64/v8
             runner: ubuntu-24.04-arm
-            build_target: [release] # refers to a cargo profile
 
     # Reference the runner defined in the matrix
     runs-on: ${{ matrix.runner }}
@@ -35,10 +34,10 @@ jobs:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Build binaries in "${{ matrix.build_target }}" mode
-        run: cargo build --profile ${{ matrix.build_target }}
+      - name: Build binaries in "${{ env.RUST_BUILD_TARGET }}" mode
+        run: cargo build --profile ${{ env.RUST_BUILD_TARGET }}
       - name: Set Output
         id: set-output
         run: echo "release_built=true" >> $GITHUB_OUTPUT
-      - name: Run tests in "${{ matrix.build_target }}" mode
-        run: cargo test --profile ${{ matrix.build_target }}
+      - name: Run tests in "${{ env.RUST_BUILD_TARGET }}" mode
+        run: cargo test --profile ${{ env.RUST_BUILD_TARGET }}
