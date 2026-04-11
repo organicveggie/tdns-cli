@@ -35,3 +35,5 @@ target/
 ~/.config/tdns-cli/*.toml
 
 plan-dist-manifest.json
+
+**/.DS_Store
