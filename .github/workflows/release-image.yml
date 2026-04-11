@@ -33,20 +33,13 @@ jobs:
 
     # Reference the runner defined in the matrix
     runs-on: ${{ matrix.runner }}
-    
-    services:
-      registry:
-        image: registry:3
-        ports:
-          - 5000:5000
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
         with:
-          persist-credentials: false
-          submodules: recursive
-
-      - uses: Swatinem/rust-cache@v2
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Docker meta
         id: meta
@@ -71,15 +64,6 @@ jobs:
           context: .
           file: Dockerfile
           push: true
-          # tags: ${{ steps.meta.outputs.tags }}
-          tags: localhost:5000/organicveggie/tdns-cli-rs:latest
+          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: ${{ matrix.platform }}
-
-      - name: Inspect
-        run: |
-          curl -vL -X GET http://localhost:5000/v2/organicveggie/tdns-cli-rs/tags/list
-
-      # - name: Inspect
-      #   run: |
-      #     docker buildx imagetools inspect localhost:5000/organicveggie/tdns-cli-rs:${{ steps.meta.outputs.version }}
