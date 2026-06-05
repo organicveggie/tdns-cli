@@ -57,5 +57,5 @@
     // Use 'postCreateCommand' to run commands after the container is created.
     "postCreateCommand": "rustc --version",
     // Use 'postStartCommand' to run commands every time the container is started.
-    "postStartCommand": "rustc --version && git config --global --add safe.directory ${containerWorkspaceFolder}"
+    "postStartCommand": "rustc --version && git config --global --add safe.directory ${containerWorkspaceFolder} && git config --global gpg.program \"gpg\" && git config --global commit.gpgsign true"
 }
