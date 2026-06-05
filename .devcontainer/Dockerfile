@@ -1,4 +1,4 @@
-FROM rust:latest
+FROM mcr.microsoft.com/devcontainers/rust:latest
 
 # Install Dist and Cargo Release tools
 RUN <<RUN_CMD_EOF
