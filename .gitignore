@@ -37,3 +37,4 @@ target/
 plan-dist-manifest.json
 
 **/.DS_Store
+.claude/
