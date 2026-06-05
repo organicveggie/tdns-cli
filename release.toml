@@ -1,0 +1,3 @@
+tag-name = "tdns/v{{version}}"
+publish = false
+pre-release-commit-message = "chore: release v{{version}}"
