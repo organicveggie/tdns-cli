@@ -5,6 +5,7 @@
         100,
         120
     ],
+    "git.enableCommitSigning": true,
     "[rust]": {
         "editor.defaultFormatter": "rust-lang.rust-analyzer",
         "editor.formatOnSave": true
