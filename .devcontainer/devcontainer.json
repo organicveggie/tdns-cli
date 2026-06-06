@@ -5,6 +5,8 @@
     "build": {
         "dockerfile": "Dockerfile"
     },
+    // Tells the devcontainer to automatically match your host UID/GID
+    "updateRemoteUserUID": true,
     // Configure tool-specific properties.
     "customizations": {
         // Configure properties specific to VS Code.
