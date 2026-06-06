@@ -2,9 +2,6 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/debian
 {
     "name": "Rust",
-    // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-    // "image": "mcr.microsoft.com/devcontainers/rust:latest",
-    // "image": "rust:latest",
     "build": {
         "dockerfile": "Dockerfile"
     },
@@ -46,9 +43,16 @@
         "ghcr.io/devcontainers/features/node:1": {},
         "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
     },
+    "containerEnv": {
+        "GPG_TTY": "${localEnv:GPG_TTY}"
+    },
     // Use 'mounts' to make the cargo cache persistent in a Docker Volume.
     "mounts": [
+        // Mount the GPG directory to allow git commit signing and other GPG operations in the container using the host's GPG keys.
+        "source=${localEnv:HOME}/.gnupg,target=/home/vscode/.gnupg,type=bind,consistency=cached",
+        // Mount the Cargo cache to speed up Rust builds and make them persistent across container restarts.
         "source=devcontainer-cargo-cache-${devcontainerId},target=/usr/local/cargo,type=volume",
+        // Mount the Claude configuration and credentials to allow using the Claude Code extension in the container with the same configuration as the host.
         "source=claude-code-config,target=/home/vscode/.claude,type=volume",
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude/CLAUDE.md,target=/home/vscode/.claude/CLAUDE.md,type=bind,consistency=cached",
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude/.credentials.json,target=/home/vscode/.claude/.credentials.json,type=bind,consistency=cached"
