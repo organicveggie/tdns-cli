@@ -38,3 +38,7 @@ plan-dist-manifest.json
 
 **/.DS_Store
 .claude/
+
+.devcontainer/devcontainer-lock.json
+
+*.code-workspace

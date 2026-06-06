@@ -34,6 +34,9 @@
     },
     // Features to add to the dev container. More info: https://containers.dev/features.
     "features": {
+        "ghcr.io/devcontainers/features/git:1": {
+            "version": "latest"
+        },
         "ghcr.io/devcontainers/features/github-cli:1": {},
         "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
             "version": "latest",
@@ -48,18 +51,15 @@
     },
     // Use 'mounts' to make the cargo cache persistent in a Docker Volume.
     "mounts": [
-        // Mount the GPG directory to allow git commit signing and other GPG operations in the container using the host's GPG keys.
-        "source=${localEnv:HOME}/.gnupg,target=/home/vscode/.gnupg,type=bind,consistency=cached",
         // Mount the Cargo cache to speed up Rust builds and make them persistent across container restarts.
         "source=devcontainer-cargo-cache-${devcontainerId},target=/usr/local/cargo,type=volume",
         // Mount the Claude configuration and credentials to allow using the Claude Code extension in the container with the same configuration as the host.
-        "source=claude-code-config,target=/home/vscode/.claude,type=volume",
+        "source=claude-code-config-tdns,target=/home/vscode/.claude,type=volume",
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude/CLAUDE.md,target=/home/vscode/.claude/CLAUDE.md,type=bind,consistency=cached",
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude/.credentials.json,target=/home/vscode/.claude/.credentials.json,type=bind,consistency=cached"
     ],
     "postAttachCommand": "sudo chown vscode:vscode /home/vscode/.claude && sudo chown -R vscode:rustlang /usr/local/cargo",
-    // Use 'postCreateCommand' to run commands after the container is created.
-    "postCreateCommand": "rustc --version",
-    // Use 'postStartCommand' to run commands every time the container is started.
-    "postStartCommand": "rustc --version && git config --global --add safe.directory ${containerWorkspaceFolder} && git config --global gpg.program \"gpg\" && git config --global commit.gpgsign true"
+    // The postStartCommand is used for processes that must spin up every single time you wake the container up.
+    "postStartCommand": "rustc --version",
+    "updateContentCommand": "bash ${containerWorkspaceFolder}/.devcontainer/update-content.sh ${containerWorkspaceFolder}"
 }
